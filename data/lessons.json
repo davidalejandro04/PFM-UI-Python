@@ -1,5 +1,35 @@
 [
-  { "unit": "Fracciones", "title": "Concepto",   "description": "Qué es una fracción" },
-  { "unit": "Fracciones", "title": "Suma",       "description": "Cómo sumar fracciones" },
-  { "unit": "Ángulos",    "title": "Tipos",      "description": "Agudo, recto, obtuso" }
+  {
+    "unit": "Fracciones",
+    "lessons": [
+      {
+        "title": "Concepto",
+        "description": "Qué es una fracción",
+        "stages": [
+          { "html": "<h2>¿Qué es una fracción?</h2><p>Una fracción ...</p>" },
+          { "html": "<h3>Ejemplos</h3><p>1/2, 3/4 ...</p>" }
+        ]
+      },
+      {
+        "title": "Suma",
+        "description": "Cómo sumar fracciones",
+        "stages": [
+          { "html": "<h2>Sumar fracciones</h2><p>Mismo denominador ...</p>" },
+          { "html": "<h3>Diferente denominador</h3><p>Encuentra el m.c.m ...</p>" }
+        ]
+      }
+    ]
+  },
+  {
+    "unit": "Ángulos",
+    "lessons": [
+      {
+        "title": "Tipos",
+        "description": "Agudo, recto, obtuso",
+        "stages": [
+          { "html": "<h2>Ángulos</h2><ul><li>Agudo</li><li>Recto</li>...</ul>" }
+        ]
+      }
+    ]
+  }
 ]

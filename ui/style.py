@@ -14,6 +14,9 @@ QPushButton    {
 }
 QPushButton:hover   { background: #5b9dff; }
 QPushButton:pressed { background: #3367d6; }
+QListWidget { background:#2b2b2b; color:#f0f0f0; border:none; }
+QListWidget::item:selected { background:#4285F4; color:white; }
+
 """
 
 def apply_style(app):

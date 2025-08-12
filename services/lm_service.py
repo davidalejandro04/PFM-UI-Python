@@ -1,26 +1,49 @@
 # services/lm_service.py
-import random
-from PySide6.QtCore import QObject, Signal
+"""
+Qt service layer that calls the LocalLLM in a background thread and
+emits 'answered' back to controllers. Drop-in replacement for the
+previous random-responder service.
+"""
+from PySide6.QtCore import QObject, QThread, Signal
+from typing import Optional, Literal
+
+from tutor_backend import LocalLLM
+
+
+class _GenThread(QThread):
+    done  = Signal(str)
+    error = Signal(str)
+
+    def __init__(self, backend: LocalLLM, question: str, system_prompt: Optional[str] = None):
+        super().__init__()
+        self.backend = backend
+        self.question = question
+        self.system_prompt = system_prompt
+
+    def run(self):
+        try:
+            text = self.backend.generate(self.question, self.system_prompt)
+            self.done.emit(text)
+        except Exception as e:
+            self.error.emit(str(e))
+
 
 class LMService(QObject):
-    answered = Signal(str)                  # → controlador
+    answered = Signal(str)     # → controller/view
+    failed   = Signal(str)     # → controller/view (optional UI message)
 
-    def ask(self, question: str):
-        resp = self._rand_resp(question)
-        self.answered.emit(resp)            # notifica al controlador
+    def __init__(self, model: Literal["gemma","qwen"] = "gemma"):
+        super().__init__()
+        self._backend = LocalLLM(model=model)
+        self._threads = []     # keep refs so threads don't get GC'd
 
-    # ------------------------------------------------ private
-    def _rand_resp(self, q: str) -> str:
-        templates = [
-            "¡Interesante pregunta! Para resolverla, recuerda que {}.",
-            "Pensemos juntos 🤔. Un buen primer paso es {}.",
-            "Prueba descomponer el problema: {}.",
-            "Una pista: {}."
-        ]
-        hint = random.choice([
-            "sumar los términos semejantes",
-            "dibujar un diagrama",
-            "aplicar la propiedad distributiva",
-            "buscar un patrón en los números"
-        ])
-        return random.choice(templates).format(hint)
+    def set_model(self, model: Literal["gemma","qwen"]) -> None:
+        self._backend.set_model(model)
+
+    def ask(self, question: str, system_prompt: Optional[str] = None):
+        worker = _GenThread(self._backend, question, system_prompt)
+        worker.done.connect(self.answered.emit)
+        worker.error.connect(self.failed.emit)
+        worker.finished.connect(lambda: self._threads.remove(worker) if worker in self._threads else None)
+        self._threads.append(worker)
+        worker.start()

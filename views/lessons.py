@@ -1,41 +1,99 @@
-# views/lessons.py
+# views/lessons.py  (reemplaza)
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QListWidget, QListWidgetItem
+    QWidget, QStackedWidget, QListWidget, QListWidgetItem,
+    QTextBrowser, QVBoxLayout, QHBoxLayout, QPushButton
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QSize
 
+# ---------- widgets auxiliares ---------------------------------
+def _make_list(icon_size=QSize(240,90)):
+    lw = QListWidget()
+    lw.setViewMode(QListWidget.IconMode)
+    lw.setIconSize(icon_size)
+    lw.setResizeMode(QListWidget.Adjust)
+    lw.setSpacing(12)
+    lw.setWordWrap(True)
+    return lw
 
-class LessonsView(QWidget):
-    """Vista Lecciones – catálogo agrupado por unidad."""
-    lessonDoubleClicked = Signal(dict)  # → controlador (lección seleccionada)
+class LessonReader(QWidget):
+    backClicked = Signal()
+    nextStage   = Signal()
+    prevStage   = Signal()
 
     def __init__(self):
         super().__init__()
         lay = QVBoxLayout(self)
-        lay.addWidget(QLabel("<h2>Lesson catalogue</h2>"))
+        self.browser = QTextBrowser()
+        self.browser.setOpenExternalLinks(True)
+        nav = QHBoxLayout()
+        self.prev_btn = QPushButton("←"); self.next_btn = QPushButton("→")
+        self.prev_btn.clicked.connect(self.prevStage.emit)
+        self.next_btn.clicked.connect(self.nextStage.emit)
+        self.back_btn = QPushButton("Back")
+        self.back_btn.clicked.connect(self.backClicked.emit)
+        nav.addWidget(self.back_btn); nav.addStretch(1)
+        nav.addWidget(self.prev_btn); nav.addWidget(self.next_btn)
+        lay.addLayout(nav); lay.addWidget(self.browser, 1)
 
-        self.listw = QListWidget()
-        self.listw.itemDoubleClicked.connect(self._emit_lesson)
-        lay.addWidget(self.listw, 1)
+    def set_html(self, html): self.browser.setHtml(html)
 
-    # -------- API pública (Controlador -> Vista)
-    def populate(self, grouped_lessons):
-        """
-        `grouped_lessons` es un iterable (unidad, [lecciones])
-        """
-        self.listw.clear()
-        for unit, lessons in grouped_lessons:
-            header = QListWidgetItem(f"— {unit} —")
-            header.setFlags(Qt.ItemIsEnabled)          # no seleccionable
-            self.listw.addItem(header)
+# ---------- vista principal (tres capas) -----------------------
+class LessonsView(QWidget):
+    unitSelected    = Signal(str)
+    lessonSelected  = Signal(str)
+    backToUnits     = Signal()
+    requestExplain  = Signal(str)   # “Explícame …” (futuro)
 
-            for l in lessons:
-                item = QListWidgetItem(f"• {l['title']} – {l['description']}")
-                item.setData(Qt.UserRole, l)
-                self.listw.addItem(item)
+    def __init__(self):
+        super().__init__()
+        self.stack = QStackedWidget(self)   # 0=units 1=lessons 2=reader
+        lay = QVBoxLayout(self); lay.addWidget(self.stack)
 
-    # -------- interna
-    def _emit_lesson(self, item):
-        data = item.data(Qt.UserRole)
-        if isinstance(data, dict):
-            self.lessonDoubleClicked.emit(data)
+        # capa 0: unidades
+        self.unitsList = _make_list(QSize(260,100))
+        self.unitsList.itemClicked.connect(lambda it:
+            self.unitSelected.emit(it.text()))
+        self.stack.addWidget(self.unitsList)
+
+        # capa 1: lecciones
+        w1 = QWidget(); l1 = QVBoxLayout(w1)
+        self.lessonsList = _make_list(QSize(220,80))
+        l1.addWidget(self.lessonsList)
+        self.lessonsList.itemClicked.connect(
+            lambda it: self.lessonSelected.emit(it.data(Qt.UserRole))
+        )
+        backU = QPushButton("Back to units")
+        backU.clicked.connect(self.backToUnits.emit)
+        l1.addWidget(backU)
+        self.stack.addWidget(w1)
+
+        # capa 2: lector
+        self.reader = LessonReader()
+        self.stack.addWidget(self.reader)
+
+    # ---------------- unidades
+    def populate_units(self, units):
+        self.unitsList.clear()
+        for u in units:
+            it = QListWidgetItem(u); it.setTextAlignment(Qt.AlignCenter)
+            self.unitsList.addItem(it)
+
+    # ---------------- lecciones
+    def populate_lessons(self, unit, lessons):
+        self.lessonsList.clear()
+        for lesson in lessons:
+            it = QListWidgetItem(f"{lesson['title']}\n{lesson['description']}")
+            it.setData(Qt.UserRole, lesson)             #  ←  guarda el dict
+            it.setTextAlignment(Qt.AlignCenter)
+            self.lessonsList.addItem(it)
+        self.stack.setCurrentIndex(1)
+    
+    # ---------------- lector
+    def show_stage(self, html, at_first, at_last):
+        self.reader.set_html(html)
+        self.reader.prev_btn.setEnabled(not at_first)
+        self.reader.next_btn.setEnabled(not at_last)
+        self.stack.setCurrentIndex(2)
+
+    # cambiar a vista unidades
+    def go_home(self): self.stack.setCurrentIndex(0)
