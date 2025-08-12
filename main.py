@@ -24,7 +24,7 @@ class TutorApp(QMainWindow):
 
         # -------- controladores (autocrean su vista)
         self.profileC  = ProfileController(profile_m)
-        self.lessonsC  = LessonsController(lessons_m, profile_m)
+        self.lessonsC  = LessonsController()
         self.problemsC = ProblemsController(profile_m)
 
         # -------- TabBook (las VISTAS)
