@@ -33,7 +33,7 @@ def load_lessons():
 class TutorWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Math Tutor (Qt)")
+        self.setWindowTitle("Tutor de matemáticas")
         if (BASE_DIR/"assets/tutor.ico").exists():
             self.setWindowIcon(QIcon(str(BASE_DIR/"assets/tutor.ico")))
         self.resize(820, 520)
@@ -42,9 +42,9 @@ class TutorWindow(QMainWindow):
         self.lessons = load_lessons()
 
         tabs = QTabWidget()
-        tabs.addTab(self._build_lessons_tab(),   "Lessons")
-        tabs.addTab(self._build_problems_tab(),  "Problems")
-        tabs.addTab(self._build_profile_tab(),   "Profile")
+        tabs.addTab(self._build_lessons_tab(),   "Lecciones")
+        tabs.addTab(self._build_problems_tab(),  "Problemas")
+        tabs.addTab(self._build_profile_tab(),   "Perfil")
         self.setCentralWidget(tabs)
 
     # ------------------------------ Lessons
@@ -62,13 +62,13 @@ class TutorWindow(QMainWindow):
 
     def _open_lesson(self, item):
         lesson = item.data(Qt.UserRole)
-        QFileDialog.information(self, "Open lesson",
+        QFileDialog.information(self, "Abrir lección",
             f"Aquí abrirías la lección:\n\n{json.dumps(lesson, indent=2, ensure_ascii=False)}")
 
     # ------------------------------ Problems / Chat
     def _build_problems_tab(self):
         w = QWidget();  lay = QVBoxLayout(w)
-        lay.addWidget(QLabel("<h2>Practice problems</h2>"))
+        lay.addWidget(QLabel("<h2>Práctica de problemas</h2>"))
 
         # chat history
         self.chat_box = QListWidget()
@@ -107,7 +107,7 @@ class TutorWindow(QMainWindow):
         w = QWidget(); lay = QVBoxLayout(w)
         self.profile_lbl = QLabel()
         self._refresh_profile_label()
-        reset = QPushButton("Reset progress")
+        reset = QPushButton("Reiniciar progreso")
         reset.clicked.connect(self._reset_profile)
         lay.addWidget(QLabel("<h2>Your profile</h2>"))
         lay.addWidget(self.profile_lbl)

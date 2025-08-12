@@ -29,7 +29,7 @@ class LessonsController(QObject):
         self._stages         = []
         self._stage_index    = 0
 
-        self.lm     = LMService(model="qwen")    # preparado para futuro “explícame” (RF‑03)
+        self.lm     = LMService(model="gemma")    # preparado para futuro “explícame” (RF‑03)
 
     # -------- controladores de navegación
     def _open_unit(self, unit):

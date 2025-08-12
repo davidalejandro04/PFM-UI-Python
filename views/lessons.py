@@ -29,7 +29,7 @@ class LessonReader(QWidget):
         self.prev_btn = QPushButton("←"); self.next_btn = QPushButton("→")
         self.prev_btn.clicked.connect(self.prevStage.emit)
         self.next_btn.clicked.connect(self.nextStage.emit)
-        self.back_btn = QPushButton("Back")
+        self.back_btn = QPushButton("Atrás")
         self.back_btn.clicked.connect(self.backClicked.emit)
         nav.addWidget(self.back_btn); nav.addStretch(1)
         nav.addWidget(self.prev_btn); nav.addWidget(self.next_btn)
@@ -62,7 +62,7 @@ class LessonsView(QWidget):
         self.lessonsList.itemClicked.connect(
             lambda it: self.lessonSelected.emit(it.data(Qt.UserRole))
         )
-        backU = QPushButton("Back to units")
+        backU = QPushButton("Volver a unidades")
         backU.clicked.connect(self.backToUnits.emit)
         l1.addWidget(backU)
         self.stack.addWidget(w1)

@@ -1,5 +1,8 @@
 import sys
-from pathlib import Path
+from PySide6.QtWidgets import QApplication
+from PySide6.QtWebEngineWidgets import QWebEngineView
+
+from ui import apply_style
 from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget
 
 from ui import apply_style           
@@ -12,7 +15,7 @@ from controllers.problems import ProblemsController
 class TutorApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Math Tutor (MVC‑Qt)")
+        self.setWindowTitle("Tutor de matemáticas")
         self.resize(900, 560)
 
         # -------- modelos
@@ -26,15 +29,15 @@ class TutorApp(QMainWindow):
 
         # -------- TabBook (las VISTAS)
         tabs = QTabWidget()
-        tabs.addTab(self.lessonsC.view,   "Lessons")
-        tabs.addTab(self.problemsC.view,  "Problems")
-        tabs.addTab(self.profileC.view,   "Profile")
+        tabs.addTab(self.lessonsC.view,   "Lecciones")
+        tabs.addTab(self.problemsC.view,  "Problemas")
+        tabs.addTab(self.profileC.view,   "Perfil")
         self.setCentralWidget(tabs)
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    apply_style(app)                  # ② NUEVO
 
-    win = TutorApp()   # ← guarda la referencia
+    app = QApplication(sys.argv)
+    apply_style(app)
+    win = TutorApp()
     win.show()
-    sys.exit(app.exec())   # ← deja que Qt procese eventos
+    sys.exit(app.exec())

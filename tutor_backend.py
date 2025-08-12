@@ -129,15 +129,32 @@ class LocalLLM:
         return device, dtype, device_map
 
     def _build_prompt(self, question: str, system_prompt: Optional[str]) -> str:
-        system = system_prompt or (
-            "Eres un tutor de matemáticas paciente. Explica paso a paso, "
-            "concluye con una pista accionable."
+        # Strong, explicit Spanish policy for the model itself
+        POLICY_ES = (
+            "Eres un tutor de matemáticas en español. Políticas OBLIGATORIAS:\n"
+            "1) Solo respondes temas de matemáticas escolares/universitarias. "
+            "   Si la consulta no es de matemáticas, responde exactamente: "
+            "   'Este tutor solo responde preguntas de matemáticas. Reformula tu consulta dentro de ese ámbito.'\n"
+            "2) Siempre responde en español, con pasos claros. Si el usuario escribe en otro idioma, responde exactamente: "
+            "   'Por favor, formula tu pregunta en español para poder ayudarte.'\n"
+            "3) Si la consulta es grosera, inapropiada u ofensiva, responde exactamente: "
+            "   'No puedo ayudar con ese tipo de contenido.'\n"
+            "4) Cuando incluyas fórmulas, usa notación LaTeX entre $...$ o $$...$$. "
+            "   Sé breve, correcto y pedagógico."
         )
+        system = system_prompt or POLICY_ES
 
-        # Very simple “chat” template that works for most IT models.
         if self.model_key == "qwen":
-            # Qwen-style generic chat
-            return f"<|system|>\n{system}\n<|user|>\n{question}\n<|assistant|>\n"
+            # Generic chat wrapper for Qwen‑like models
+            return (
+                f"<|system|>\n{system}\n"
+                f"<|user|>\n{question}\n"
+                f"<|assistant|>\n"
+            )
         else:
-            # Gemma/Generic instruction prompt
-            return f"{system}\n\nUsuario: {question}\nAsistente:"
+            # Gemma/generic IT wrapper
+            return (
+                f"{system}\n\n"
+                f"Usuario: {question}\n"
+                f"Asistente:"
+            )

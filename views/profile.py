@@ -7,7 +7,7 @@ class ProfileView(QWidget):
     def __init__(self):
         super().__init__()
         self._label = QLabel()
-        self._reset_btn = QPushButton("Reset progress")
+        self._reset_btn = QPushButton("Reiniciar progreso")
 
         lay = QVBoxLayout(self)
         lay.addWidget(self._label)
@@ -17,9 +17,9 @@ class ProfileView(QWidget):
     # ------- API usada por el controlador
     def set_data(self, xp: int, lessons_completed: int):
         self._label.setText(
-            f"<h3>Profile</h3>"
-            f"XP points: {xp}<br>"
-            f"Lessons finished: {lessons_completed}"
+            f"<h3>Perfil</h3>"
+            f"Puntos de experiencia: {xp}<br>"
+            f"Lecciones terminadas: {lessons_completed}"
         )
 
     @property

@@ -8,6 +8,7 @@ from PySide6.QtCore import QObject, QThread, Signal
 from typing import Optional, Literal
 
 from tutor_backend import LocalLLM
+from .guard import pregate   # ← NEW
 
 
 class _GenThread(QThread):
@@ -29,18 +30,25 @@ class _GenThread(QThread):
 
 
 class LMService(QObject):
-    answered = Signal(str)     # → controller/view
-    failed   = Signal(str)     # → controller/view (optional UI message)
+    answered = Signal(str)
+    failed   = Signal(str)
 
     def __init__(self, model: Literal["gemma","qwen"] = "gemma"):
         super().__init__()
         self._backend = LocalLLM(model=model)
-        self._threads = []     # keep refs so threads don't get GC'd
+        self._threads = []
 
     def set_model(self, model: Literal["gemma","qwen"]) -> None:
         self._backend.set_model(model)
 
     def ask(self, question: str, system_prompt: Optional[str] = None):
+        # NEW: pre‑gate (fast path)
+        blocked = pregate(question)
+        if blocked:
+            self.answered.emit(blocked)  # Spanish canned message
+            return
+
+        # Normal async generation
         worker = _GenThread(self._backend, question, system_prompt)
         worker.done.connect(self.answered.emit)
         worker.error.connect(self.failed.emit)
