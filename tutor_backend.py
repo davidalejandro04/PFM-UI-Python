@@ -22,7 +22,7 @@ class LocalLLM:
         model: Literal["gemma", "qwen"] = "gemma",
         base_dir: Optional[Path] = None,
         max_new_tokens: int = 256,
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         top_p: float = 0.9,
     ):
         self.base_dir = base_dir or Path(__file__).parent

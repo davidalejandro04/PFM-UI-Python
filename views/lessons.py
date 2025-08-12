@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal, QSize, QUrl
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
+
 def _make_list(list_mode="list"):
     lw = QListWidget()
     if list_mode == "icons":
@@ -37,6 +38,67 @@ class LessonReader(QWidget):
     backToUnits   = Signal()
     nextStage     = Signal()
     prevStage     = Signal()
+    # NEW: emits the plain-text selection from the web view
+    explainSelected = Signal(str)  # ← NEW
+
+    def __init__(self):
+        super().__init__()
+        lay = QVBoxLayout(self)
+        self.web = QWebEngineView()
+        nav = QHBoxLayout()
+
+        # Navigation buttons
+        self.home_btn = QPushButton("Inicio")
+        self.back_btn = QPushButton("Lecciones")
+        self.prev_btn = QPushButton("← Anterior")
+        self.next_btn = QPushButton("Siguiente →")
+
+        self.home_btn.clicked.connect(self.backToUnits.emit)
+        self.back_btn.clicked.connect(self.backToLessons.emit)
+        self.prev_btn.clicked.connect(self.prevStage.emit)
+        self.next_btn.clicked.connect(self.nextStage.emit)
+
+        # NEW: "Explicame esto" button (disabled until there is a selection)
+        self.explain_btn = QPushButton("Explicame esto")  # label per requirement
+        self.explain_btn.setEnabled(False)
+        self.explain_btn.clicked.connect(self._emit_explain)  # handler below
+
+        nav.addWidget(self.home_btn)
+        nav.addWidget(self.back_btn)
+        nav.addWidget(self.explain_btn)  # ← NEW: make it visible in the top bar
+        nav.addStretch(1)
+        nav.addWidget(self.prev_btn)
+        nav.addWidget(self.next_btn)
+
+        lay.addLayout(nav)
+        lay.addWidget(self.web, 1)
+
+        # Track selection changes coming from the embedded page
+        self._last_selection = ""
+        self.web.page().selectionChanged.connect(self._on_selection_changed)  # ← NEW
+
+    def set_html(self, html):
+        self.web.setHtml(html, QUrl("about:blank"))
+        # reset state on new stage
+        self._last_selection = ""
+        self.explain_btn.setEnabled(False)
+
+    # ---- NEW helpers ----
+    def _on_selection_changed(self):
+        txt = self.web.selectedText().strip()
+        self._last_selection = txt
+        self.explain_btn.setEnabled(bool(txt))
+
+    def _emit_explain(self):
+        if self._last_selection:
+            self.explainSelected.emit(self._last_selection)
+    backToLessons = Signal()
+    backToUnits   = Signal()
+    nextStage     = Signal()
+    prevStage     = Signal()
+
+    explainSelected = Signal(str)  # ← NEW
+
 
     def __init__(self):
         super().__init__()
@@ -54,8 +116,13 @@ class LessonReader(QWidget):
         self.prev_btn.clicked.connect(self.prevStage.emit)
         self.next_btn.clicked.connect(self.nextStage.emit)
 
+        self.explain_btn = QPushButton("Explicame esto")  # label per requirement
+        self.explain_btn.setEnabled(False)
+        self.explain_btn.clicked.connect(self._emit_explain)  # handler below
+
         nav.addWidget(self.home_btn)
         nav.addWidget(self.back_btn)
+        nav.addWidget(self.explain_btn)  # ← NEW: make it visible in the top bar
         nav.addStretch(1)
         nav.addWidget(self.prev_btn)
         nav.addWidget(self.next_btn)
@@ -63,8 +130,27 @@ class LessonReader(QWidget):
         lay.addLayout(nav)
         lay.addWidget(self.web, 1)
 
+        # Track selection changes coming from the embedded page
+        self._last_selection = ""
+        self.web.page().selectionChanged.connect(self._on_selection_changed)  # ← NEW
+
     def set_html(self, html):
         self.web.setHtml(html, QUrl("about:blank"))
+        # reset state on new stage
+        self._last_selection = ""
+        self.explain_btn.setEnabled(False)
+
+    # ---- NEW helpers ----
+    def _on_selection_changed(self):
+        txt = self.web.selectedText().strip()
+        self._last_selection = txt
+        self.explain_btn.setEnabled(bool(txt))
+
+    def _emit_explain(self):
+        if self._last_selection:
+            self.explainSelected.emit(self._last_selection)
+
+
 
 class LessonsView(QWidget):
     unitSelected    = Signal(str)
