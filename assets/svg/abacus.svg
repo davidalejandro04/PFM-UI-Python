@@ -1,0 +1,20 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Abacus</title><desc>Colorful abacus with five rods and beads.</desc>
+  <rect x="12" y="12" width="104" height="104" rx="10" fill="#FFEFD5" stroke="#2D3142" stroke-width="4"/>
+  <!-- Rods -->
+  <line x1="28" y1="24" x2="28" y2="116" stroke="#2D3142" stroke-width="4" stroke-linecap="round"/>
+  <line x1="48" y1="24" x2="48" y2="116" stroke="#2D3142" stroke-width="4" stroke-linecap="round"/>
+  <line x1="68" y1="24" x2="68" y2="116" stroke="#2D3142" stroke-width="4" stroke-linecap="round"/>
+  <line x1="88" y1="24" x2="88" y2="116" stroke="#2D3142" stroke-width="4" stroke-linecap="round"/>
+  <line x1="108" y1="24" x2="108" y2="116" stroke="#2D3142" stroke-width="4" stroke-linecap="round"/>
+  <!-- Beads -->
+  <circle cx="28" cy="44" r="7" fill="#42A5F5" stroke="#2D3142" stroke-width="3"/>
+  <circle cx="28" cy="64" r="7" fill="#42A5F5" stroke="#2D3142" stroke-width="3"/>
+  <circle cx="48" cy="84" r="7" fill="#66BB6A" stroke="#2D3142" stroke-width="3"/>
+  <circle cx="48" cy="64" r="7" fill="#66BB6A" stroke="#2D3142" stroke-width="3"/>
+  <circle cx="68" cy="74" r="7" fill="#FFB74D" stroke="#2D3142" stroke-width="3"/>
+  <circle cx="68" cy="54" r="7" fill="#FFB74D" stroke="#2D3142" stroke-width="3"/>
+  <circle cx="88" cy="64" r="7" fill="#EC407A" stroke="#2D3142" stroke-width="3"/>
+  <circle cx="108" cy="44" r="7" fill="#AB47BC" stroke="#2D3142" stroke-width="3"/>
+  <circle cx="108" cy="64" r="7" fill="#AB47BC" stroke="#2D3142" stroke-width="3"/>
+</svg>

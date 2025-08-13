@@ -6,8 +6,21 @@ from functools import partial
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QDialog, QVBoxLayout, QTextEdit
 from views.lessons import LessonsView
 from services.lm_service import LMService
+from models.profile import ProfileModel
 
-EXPLAIN_SYSTEM_PROMPT = "GENERA LA EXPLICACIÓN EN ESPAÑOL: EXPLICA BREVEMENTE EL TEXTO SIGUIENTE:\n\n"
+EXPLAIN_SYSTEM_PROMPT = """Eres un tutor de matemáticas para niños. El niño necesita explicación sobre este tema y se abordará paso a paso.
+Criterios: 
+- Explica SOLO en español neutro, claro y breve.
+- No repitas frases ni ideas.
+- Usa pasos numerados y un ejemplo corto.
+- Termina con “Resumen:” en una sola línea.
+- Si hay ambigüedad, aclárala sin inventar datos.
+- No uses más de 1 paso.
+Formato:
+…
+<EJEMPLO>…</EJEMPLO>
+<RESUMEN>…</RESUMEN>
+:\n\n"""
 
 class _ExplanationWindow(QDialog):
     def __init__(self, parent=None, title="Explicación"):
@@ -26,8 +39,9 @@ class _ExplanationWindow(QDialog):
         self.text.setPlainText(t.strip() if t else "(sin contenido)")
 
 class LessonsController(QWidget):
-    def __init__(self, lessons_json="data/lessons.json"):
+    def __init__(self, profile_model: ProfileModel, lessons_json="data/lessons.json"):
         super().__init__()
+        self.profile = profile_model
         self.view = LessonsView()
         lay = QVBoxLayout(self); lay.addWidget(self.view)
 
@@ -43,6 +57,7 @@ class LessonsController(QWidget):
         self.current_lesson = None
         self.stages = []
         self.stage_idx = 0
+        self._marked_completed_current = False  # <-- NUEVO
 
         # Language model service
         self._lm = LMService(model="qwen")
@@ -55,16 +70,27 @@ class LessonsController(QWidget):
 
         # Hook “Explicame esto”
         self.view.reader.explainSelected.connect(self.on_explain_selected)
+        self.view.reader.finishLesson.connect(self._finish_current_lesson)  # NUEVO
 
     def on_unit_selected(self, unit_name):
         self.current_unit_name = unit_name
         lessons = self.units[unit_name]["lessons"]
         self.view.populate_lessons(unit_name, lessons)
+        
+    def _finish_current_lesson(self):
+        if self.current_unit_name and self.current_lesson:
+            self.profile.record_completion(
+                self.current_unit_name,
+                self.current_lesson.get("title", "")
+            )
+        # volver a lista de lecciones
+        self.view._go_lessons()
 
     def on_lesson_selected(self, lesson_dict):
         self.current_lesson = lesson_dict
         self.stages = lesson_dict.get("stages", [])
         self.stage_idx = 0
+        self._marked_completed_current = False  # <-- reiniciar bandera
         self._show_current_stage()
 
     def on_next_stage(self):
@@ -82,6 +108,22 @@ class LessonsController(QWidget):
         at_last  = (self.stage_idx == len(self.stages)-1)
         html = self.stages[self.stage_idx].get("html", "<h1>Vacío</h1>")
         self.view.show_stage(html, at_first, at_last)
+
+        if at_last and not self._marked_completed_current and self.current_lesson:
+            unit = self.current_unit_name or ""
+            title = self.current_lesson.get("title", "")
+            if unit and title:
+                self.profile.record_completion(unit, title)  # actualiza perfil
+            self._marked_completed_current = True
+            
+    def open_lesson(self, unit_name: str, lesson_title: str):
+        self.current_unit_name = unit_name
+        lessons = self.units[unit_name]["lessons"]
+        # reutilizar la lógica existente
+        for ld in lessons:
+            if ld.get("title") == lesson_title:
+                self.on_lesson_selected(ld)
+                break
 
     # ---- explain flow ----
     def on_explain_selected(self, selected_text: str):

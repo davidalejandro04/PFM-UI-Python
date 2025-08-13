@@ -1,0 +1,18 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Calculator</title><desc>Friendly calculator with smiling display and colorful buttons.</desc>
+  <rect x="20" y="10" width="88" height="108" rx="14" fill="#ECEFF1" stroke="#2D3142" stroke-width="4"/>
+  <rect x="30" y="18" width="68" height="28" rx="6" fill="#B3E5FC" stroke="#2D3142" stroke-width="3"/>
+  <!-- Smile -->
+  <circle cx="50" cy="32" r="3" fill="#2D3142"/><circle cx="78" cy="32" r="3" fill="#2D3142"/>
+  <path d="M56 38 Q64 44 72 38" fill="none" stroke="#2D3142" stroke-width="2" stroke-linecap="round"/>
+  <!-- Buttons grid -->
+  <g stroke="#2D3142" stroke-width="3">
+    <rect x="30" y="54" width="20" height="20" rx="4" fill="#FFCDD2"/>
+    <rect x="54" y="54" width="20" height="20" rx="4" fill="#C8E6C9"/>
+    <rect x="78" y="54" width="20" height="20" rx="4" fill="#FFF9C4"/>
+    <rect x="30" y="78" width="20" height="20" rx="4" fill="#D1C4E9"/>
+    <rect x="54" y="78" width="20" height="20" rx="4" fill="#FFE0B2"/>
+    <rect x="78" y="78" width="20" height="20" rx="4" fill="#BBDEFB"/>
+    <rect x="30" y="102" width="68" height="16" rx="5" fill="#B2DFDB"/>
+  </g>
+</svg>

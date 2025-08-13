@@ -33,7 +33,7 @@ class LMService(QObject):
     answered = Signal(str)
     failed   = Signal(str)
 
-    def __init__(self, model: Literal["gemma","qwen"] = "gemma"):
+    def __init__(self, model: Literal["gemma","qwen"] = "qwen"):
         super().__init__()
         self._backend = LocalLLM(model=model)
         self._threads = []

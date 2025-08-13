@@ -1,0 +1,20 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Number Line</title><desc>Number line with ticks and highlighted jump.</desc>
+  <!-- Base line -->
+  <line x1="16" y1="80" x2="112" y2="80" stroke="#2D3142" stroke-width="4" stroke-linecap="round"/>
+  <!-- Arrow -->
+  <polygon points="112,80 102,74 102,86" fill="#2D3142"/>
+  <!-- Ticks -->
+  <g stroke="#2D3142" stroke-width="3" stroke-linecap="round">
+    <line x1="24" y1="74" x2="24" y2="86"/>
+    <line x1="40" y1="74" x2="40" y2="86"/>
+    <line x1="56" y1="74" x2="56" y2="86"/>
+    <line x1="72" y1="74" x2="72" y2="86"/>
+    <line x1="88" y1="74" x2="88" y2="86"/>
+    <line x1="104" y1="74" x2="104" y2="86"/>
+  </g>
+  <!-- Highlighted jump (0→3) -->
+  <path d="M24 80 Q32 60 40 80" fill="none" stroke="#42A5F5" stroke-width="4" stroke-linecap="round"/>
+  <path d="M40 80 Q48 60 56 80" fill="none" stroke="#42A5F5" stroke-width="4" stroke-linecap="round"/>
+  <path d="M56 80 Q64 60 72 80" fill="none" stroke="#42A5F5" stroke-width="4" stroke-linecap="round"/>
+</svg>

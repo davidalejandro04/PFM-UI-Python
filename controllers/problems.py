@@ -6,7 +6,7 @@ class ProblemsController(QObject):
     def __init__(self, profile_model):
         super().__init__()
         self.view   = ProblemsView()
-        self.lm     = LMService(model="qwen")   # or "qwen"
+        self.lm     = LMService(model="gemma")   # or "qwen"
         self.modelP = profile_model
 
         # Vista → controlador

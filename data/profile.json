@@ -1,4 +1,21 @@
 {
-  "xp": 25,
-  "lessonsCompleted": 0
+  "xp": 16,
+  "lessonsCompleted": 3,
+  "completed": [
+    {
+      "unit": "N\u00fameros y patrones \u2014 3.\u00ba",
+      "title": "Patrones en secuencias (3.\u00ba)",
+      "ts": "2025-08-13T02:36:40.984453"
+    },
+    {
+      "unit": "N\u00fameros y patrones \u2014 3.\u00ba",
+      "title": "C\u00e1lculo mental con sumas y restas (3.\u00ba)",
+      "ts": "2025-08-13T02:39:37.765814"
+    },
+    {
+      "unit": "Geometr\u00eda 1 \u2014 Tri\u00e1ngulos",
+      "title": "Tipos de tri\u00e1ngulos",
+      "ts": "2025-08-13T02:52:45.335525"
+    }
+  ]
 }

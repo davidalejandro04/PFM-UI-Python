@@ -1,0 +1,20 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Geometry Tools</title><desc>Triangle ruler and straight ruler for geometry.</desc>
+  <!-- Straight ruler -->
+  <rect x="18" y="86" width="92" height="16" rx="4" fill="#FFE082" stroke="#2D3142" stroke-width="4"/>
+  <!-- Ticks -->
+  <g stroke="#5D4037" stroke-width="2">
+    <line x1="26" y1="86" x2="26" y2="92"/>
+    <line x1="34" y1="86" x2="34" y2="94"/>
+    <line x1="42" y1="86" x2="42" y2="92"/>
+    <line x1="50" y1="86" x2="50" y2="94"/>
+    <line x1="58" y1="86" x2="58" y2="92"/>
+    <line x1="66" y1="86" x2="66" y2="94"/>
+    <line x1="74" y1="86" x2="74" y2="92"/>
+    <line x1="82" y1="86" x2="82" y2="94"/>
+    <line x1="90" y1="86" x2="90" y2="92"/>
+  </g>
+  <!-- Triangle ruler -->
+  <polygon points="28,24 92,24 52,64" fill="#C5CAE9" stroke="#2D3142" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="92,24 100,32 60,72 52,64" fill="#9FA8DA" stroke="#2D3142" stroke-width="4" stroke-linejoin="round"/>
+</svg>

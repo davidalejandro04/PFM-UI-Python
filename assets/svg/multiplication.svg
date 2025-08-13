@@ -1,0 +1,22 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Multiplication Idea</title><desc>Lightbulb with plus, times, and equals symbols around.</desc>
+  <!-- Lightbulb -->
+  <ellipse cx="64" cy="48" rx="24" ry="28" fill="#FFF9C4" stroke="#2D3142" stroke-width="4"/>
+  <rect x="54" y="72" width="20" height="12" rx="3" fill="#B0BEC5" stroke="#2D3142" stroke-width="3"/>
+  <rect x="52" y="84" width="24" height="10" rx="3" fill="#90A4AE" stroke="#2D3142" stroke-width="3"/>
+  <!-- Rays -->
+  <g stroke="#FDD835" stroke-width="4" stroke-linecap="round">
+    <line x1="64" y1="14" x2="64" y2="24"/><line x1="38" y1="22" x2="44" y2="30"/>
+    <line x1="90" y1="22" x2="84" y2="30"/><line x1="30" y1="46" x2="40" y2="46"/>
+    <line x1="88" y1="46" x2="98" y2="46"/>
+  </g>
+  <!-- Symbols -->
+  <g stroke="#2D3142" stroke-width="4" stroke-linecap="round">
+    <!-- plus -->
+    <line x1="22" y1="102" x2="34" y2="102"/><line x1="28" y1="96" x2="28" y2="108"/>
+    <!-- times -->
+    <line x1="94" y1="96" x2="106" y2="108"/><line x1="106" y1="96" x2="94" y2="108"/>
+    <!-- equals -->
+    <line x1="56" y1="110" x2="72" y2="110"/><line x1="56" y1="116" x2="72" y2="116"/>
+  </g>
+</svg>

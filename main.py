@@ -23,16 +23,22 @@ class TutorApp(QMainWindow):
         lessons_m = LessonsModel()
 
         # -------- controladores (autocrean su vista)
-        self.profileC  = ProfileController(profile_m)
-        self.lessonsC  = LessonsController()
+        self.profileC  = ProfileController(profile_m, lessons_m)
+        self.lessonsC  = LessonsController(profile_m)   # <-- ahora recibe profile_m
         self.problemsC = ProblemsController(profile_m)
 
         # -------- TabBook (las VISTAS)
-        tabs = QTabWidget()
-        tabs.addTab(self.lessonsC.view,   "Lecciones")
-        tabs.addTab(self.problemsC.view,  "Problemas")
-        tabs.addTab(self.profileC.view,   "Perfil")
-        self.setCentralWidget(tabs)
+        self.tabs = QTabWidget()  # <-- guardar en self
+        self.tabs.addTab(self.lessonsC.view,   "Lecciones")
+        self.tabs.addTab(self.problemsC.view,  "Problemas")
+        self.tabs.addTab(self.profileC.view,   "Perfil")
+        self.setCentralWidget(self.tabs)
+
+        def _open_from_profile(unit, title):
+            self.tabs.setCurrentIndex(0)  # pestaña "Lecciones"
+            self.lessonsC.open_lesson(unit, title)
+
+        self.profileC.view.openLessonRequested.connect(_open_from_profile)
 
 if __name__ == "__main__":
 

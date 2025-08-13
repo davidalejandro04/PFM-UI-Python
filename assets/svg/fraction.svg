@@ -1,0 +1,22 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Fraction Circle</title><desc>Circle cut into six parts, one slice highlighted.</desc>
+  <!-- Plate -->
+  <circle cx="64" cy="64" r="44" fill="#FFFDE7" stroke="#2D3142" stroke-width="4"/>
+  <!-- Slices (radials) -->
+  <g stroke="#2D3142" stroke-width="2">
+    <line x1="64" y1="64" x2="108" y2="64"/>
+    <line x1="64" y1="64" x2="82" y2="32.8"/>
+    <line x1="64" y1="64" x2="46" y2="32.8"/>
+    <line x1="64" y1="64" x2="20" y2="64"/>
+    <line x1="64" y1="64" x2="46" y2="95.2"/>
+    <line x1="64" y1="64" x2="82" y2="95.2"/>
+  </g>
+  <!-- Highlighted wedge (center-0°-60° triangle) -->
+  <polygon points="64,64 100,64 82,32.8" fill="#FFCC80" stroke="#FB8C00" stroke-width="3"/>
+  <!-- Toppings (cute dots) -->
+  <g fill="#D84315">
+    <circle cx="74" cy="54" r="2.5"/><circle cx="58" cy="52" r="2.5"/>
+    <circle cx="70" cy="70" r="2.5"/><circle cx="86" cy="72" r="2.5"/>
+    <circle cx="48" cy="74" r="2.5"/>
+  </g>
+</svg>

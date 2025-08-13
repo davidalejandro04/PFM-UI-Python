@@ -19,11 +19,13 @@ class LocalLLM:
 
     def __init__(
         self,
-        model: Literal["gemma", "qwen"] = "gemma",
+        model: Literal["gemma", "qwen"] = "qwen",
         base_dir: Optional[Path] = None,
         max_new_tokens: int = 256,
         temperature: float = 0.3,
         top_p: float = 0.9,
+        repetition_penalty=1.2,  
+        no_repeat_ngram_size=3,  
     ):
         self.base_dir = base_dir or Path(__file__).parent
         self.model_key = model
