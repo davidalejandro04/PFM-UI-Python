@@ -8,23 +8,31 @@ from PySide6.QtCore import QObject, QThread, Signal
 from typing import Optional, Literal
 
 from tutor_backend import LocalLLM
-from .guard import pregate   # ← NEW
+
+
+try:
+    from .guard import pregate
+except Exception:
+    def pregate(_q: str) -> str:
+        return ""  # no-op fallback
 
 
 class _GenThread(QThread):
-    done  = Signal(str)
+    done = Signal(str)
     error = Signal(str)
 
-    def __init__(self, backend: LocalLLM, question: str, system_prompt: Optional[str] = None):
+    def __init__(self, llm, question, system_prompt=None, mode="default"):
         super().__init__()
-        self.backend = backend
-        self.question = question
-        self.system_prompt = system_prompt
+        self._llm = llm
+        self._question = question
+        self._system_prompt = system_prompt
+        self._mode = mode
 
     def run(self):
         try:
-            text = self.backend.generate(self.question, self.system_prompt)
-            self.done.emit(text)
+            # Aquí estaba el problema: antes usabas self.backend
+            answer = self._llm.generate(self._question, self._system_prompt, mode=self._mode)
+            self.done.emit(answer)
         except Exception as e:
             self.error.emit(str(e))
 
@@ -33,25 +41,22 @@ class LMService(QObject):
     answered = Signal(str)
     failed   = Signal(str)
 
-    def __init__(self, model: Literal["gemma","qwen"] = "qwen"):
+    def __init__(self, model: Literal["gemma","qwen"] = "gemma"):
         super().__init__()
-        self._backend = LocalLLM(model=model)
+        self._llm = LocalLLM(model)   # <--- este atributo faltaba
         self._threads = []
 
     def set_model(self, model: Literal["gemma","qwen"]) -> None:
-        self._backend.set_model(model)
+        self._llm.set_model(model)
 
-    def ask(self, question: str, system_prompt: Optional[str] = None):
-        # NEW: pre‑gate (fast path)
-        blocked = pregate(question)
-        if blocked:
-            self.answered.emit(blocked)  # Spanish canned message
+    def ask(self, question: str, system_prompt: Optional[str] = None, mode: str = "default"):
+        pregate_response = pregate(question)
+        if pregate_response:
+            self.answered.emit(pregate_response)
             return
-
-        # Normal async generation
-        worker = _GenThread(self._backend, question, system_prompt)
-        worker.done.connect(self.answered.emit)
-        worker.error.connect(self.failed.emit)
-        worker.finished.connect(lambda: self._threads.remove(worker) if worker in self._threads else None)
-        self._threads.append(worker)
-        worker.start()
+        thread = _GenThread(self._llm, question, system_prompt, mode)
+        thread.done.connect(self.answered.emit)
+        thread.error.connect(self.failed.emit)
+        thread.finished.connect(lambda: self._threads.remove(thread))
+        self._threads.append(thread)
+        thread.start()

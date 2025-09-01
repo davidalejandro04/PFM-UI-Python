@@ -1,8 +1,25 @@
 from pathlib import Path
+import re
 from typing import Optional, Literal, Dict, Any
 
-import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+
+
+import torch
+
+# ---- 1) Acelerar FP32 con Tensor Cores (TF32)
+if torch.cuda.is_available():
+    torch.set_float32_matmul_precision('high')   # habilita TF32 para matmul FP32
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32  = True
+
+# ---- 2) (Opcional) Silenciar/autolimitar aviso de Inductor
+try:
+    import torch._inductor.config as inductor_config
+    # Desactiva el autotune "pesado" para GEMM si no lo necesitas
+    inductor_config.max_autotune_gemm = False
+except Exception:
+    pass
 
 
 _MODEL_ALIASES = {
@@ -19,7 +36,7 @@ class LocalLLM:
 
     def __init__(
         self,
-        model: Literal["gemma", "qwen"] = "qwen",
+        model: Literal["gemma", "qwen"] = "gemma",
         base_dir: Optional[Path] = None,
         max_new_tokens: int = 256,
         temperature: float = 0.3,
@@ -46,7 +63,7 @@ class LocalLLM:
         self.model_key = model
         self._load_model()
 
-    def generate(self, question: str, system_prompt: Optional[str] = None) -> str:
+    def generate(self, question: str, system_prompt: Optional[str] = None, mode: str = "default") -> str:
         prompt = self._build_prompt(question, system_prompt)
         tk = self._tokenizer(
             prompt,
@@ -72,8 +89,68 @@ class LocalLLM:
 
         # Return only the newly generated text (skip the prompt)
         gen_ids = output_ids[0, input_ids.shape[-1]:]
-        print(self._tokenizer.decode(gen_ids, skip_special_tokens=True).strip())
-        return self._tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
+        raw = self._tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
+
+        return self._postprocess_output(raw, mode=mode)
+
+
+    # ------------------------------ cleaning / extraction
+    def _postprocess_output(self, text, mode="default"):
+        """
+        Keep only the assistant's usable content.
+        Priority:
+          1) Extract between <EJEMPLO>...</EJEMPLO> and <RESUMEN>...</RESUMEN> if present.
+          2) Otherwise, strip role markers like `<|assistant|>`, `Asistente:` etc.
+        """
+
+        if mode == "explain":
+            import re
+
+            # Si el modelo devolvió un ERROR
+            m_err = re.search(r"<ERROR>.*?</ERROR>", text, flags=re.S | re.I)
+            if m_err:
+                return m_err.group(0).strip()
+
+            # Buscar bloques principales
+            blocks = {}
+            for tag in ["TEMATICA", "OBJETIVO", "EXPLICACION", "CONEXION"]:
+                m = re.search(fr"<{tag}>(.*?)</{tag}>", text, flags=re.S | re.I)
+                if m:
+                    blocks[tag] = m.group(1).strip()
+
+            # Si hay algo, construir solo hasta CONEXION
+            if blocks:
+                out = []
+                if "TEMATICA" in blocks:
+                    out.append("Temática: " + blocks["TEMATICA"])
+                if "OBJETIVO" in blocks:
+                    out.append("Objetivo: " + blocks["OBJETIVO"])
+                if "EXPLICACION" in blocks:
+                    out.append("Explicación: " + blocks["EXPLICACION"])
+                if "CONEXION" in blocks:
+                    out.append("Conexión: " + blocks["CONEXION"])
+                return "\n".join(out)
+
+            # Si nada coincide, devolver limpio sin role markers
+            t = re.sub(r"^\s*(<\|assistant\|>|Asistente:)", "", text, flags=re.I)
+            return t.strip()
+        else:
+
+            def _extract(tag):
+                m = re.search(fr"<{tag}>(.*?)</{tag}>", text, flags=re.S|re.I)
+                return (m.group(1).strip() if m else "")
+            ejemplo = _extract("EJEMPLO")
+            resumen = _extract("RESUMEN")
+            if ejemplo or resumen:
+                parts = []
+                if ejemplo: parts += ["Ejemplo:", ejemplo]
+                if resumen: parts += ["\nResumen:", resumen]
+                return "\n".join(parts).strip()
+
+            # Fallback: trim common chat scaffolding
+            t = re.sub(r"^\s*(<\|assistant\|>|\*\*Asistente:?\*\*|Asistente:)\s*", "", text, flags=re.I)
+            t = re.sub(r"^\s*(<\|system\|>|<\|user\|>).*", "", t, flags=re.I)  # safety if model re-echoes
+            return t.strip()
 
     # ------------------------------ internals
     def _resolve_model_dir(self) -> Path:

@@ -8,19 +8,25 @@ from views.lessons import LessonsView
 from services.lm_service import LMService
 from models.profile import ProfileModel
 
-EXPLAIN_SYSTEM_PROMPT = """Eres un tutor de matemáticas para niños. El niño necesita explicación sobre este tema y se abordará paso a paso.
-Criterios: 
-- Explica SOLO en español neutro, claro y breve.
-- No repitas frases ni ideas.
-- Usa pasos numerados y un ejemplo corto.
-- Termina con “Resumen:” en una sola línea.
-- Si hay ambigüedad, aclárala sin inventar datos.
-- No uses más de 1 paso.
-Formato:
-…
-<EJEMPLO>…</EJEMPLO>
-<RESUMEN>…</RESUMEN>
-:\n\n"""
+EXPLAIN_SYSTEM_PROMPT = """Eres un tutor de matemáticas para niños.
+Tu tarea es explicar un fragmento de texto que el estudiante selecciona dentro de una lección.
+
+Reglas generales:
+- Responde SOLO en formato XML, sin texto fuera de etiquetas.
+- Usa español neutro, claro y preciso.
+- Evita repeticiones innecesarias y explicaciones demasiado extensas.
+- Nunca incluyas pasos o texto fuera de las etiquetas.
+
+Antes de responder:
+0. Si la selección no constituye una oración con suficiente sentido o contexto, responde exactamente:
+<ERROR>Por favor selecciona un fragmento más amplio para que pueda explicártelo.</ERROR>
+
+Si la selección tiene suficiente contexto, responde siguiendo esta estructura:
+<TEMATICA>Identifica la temática general y explícasela al usuario.</TEMATICA>
+<OBJETIVO>Explica el objetivo pedagógico de este contenido.</OBJETIVO>
+<EXPLICACION>Desarrolla la explicación del fragmento seleccionado, de manera clara y sencilla.</EXPLICACION>
+<CONEXION>Explica cómo se conecta este contenido con otros temas de matemáticas o situaciones cotidianas.</CONEXION>
+"""
 
 class _ExplanationWindow(QDialog):
     def __init__(self, parent=None, title="Explicación"):
@@ -137,7 +143,7 @@ class LessonsController(QWidget):
         self._lm.failed.connect(fail_handler)
         win._handlers = (ok_handler, fail_handler)
 
-        self._lm.ask(question=selected_text, system_prompt=EXPLAIN_SYSTEM_PROMPT)
+        self._lm.ask(question=selected_text, system_prompt=EXPLAIN_SYSTEM_PROMPT,mode="explain")
 
     def _cleanup_handlers(self, win: _ExplanationWindow):
         if hasattr(win, "_handlers"):

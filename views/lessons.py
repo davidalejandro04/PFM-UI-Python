@@ -121,6 +121,8 @@ class LessonReader(QWidget):
         # (opcional) botón "Explícame esto" que ya tenías/querías
         self.explain_btn = QPushButton("Explicame esto")
         self.explain_btn.setEnabled(False)
+        self.explain_btn.clicked.connect(self._emit_explain)
+
 
         nav.addWidget(self.home_btn)
         nav.addWidget(self.back_btn)
