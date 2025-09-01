@@ -10,6 +10,7 @@ from typing import Optional, Literal
 from tutor_backend import LocalLLM
 
 
+# pregate opcional (no rompe si no existe guard.py)
 try:
     from .guard import pregate
 except Exception:
@@ -30,7 +31,6 @@ class _GenThread(QThread):
 
     def run(self):
         try:
-            # Aquí estaba el problema: antes usabas self.backend
             answer = self._llm.generate(self._question, self._system_prompt, mode=self._mode)
             self.done.emit(answer)
         except Exception as e:
@@ -43,7 +43,7 @@ class LMService(QObject):
 
     def __init__(self, model: Literal["gemma","qwen"] = "gemma"):
         super().__init__()
-        self._llm = LocalLLM(model)   # <--- este atributo faltaba
+        self._llm = LocalLLM(model)
         self._threads = []
 
     def set_model(self, model: Literal["gemma","qwen"]) -> None:
@@ -54,6 +54,7 @@ class LMService(QObject):
         if pregate_response:
             self.answered.emit(pregate_response)
             return
+
         thread = _GenThread(self._llm, question, system_prompt, mode)
         thread.done.connect(self.answered.emit)
         thread.error.connect(self.failed.emit)

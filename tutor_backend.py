@@ -1,10 +1,9 @@
+# tutor_backend.py
 from pathlib import Path
 import re
 from typing import Optional, Literal, Dict, Any
 
 from transformers import AutoTokenizer, AutoModelForCausalLM
-
-
 import torch
 
 # ---- 1) Acelerar FP32 con Tensor Cores (TF32)
@@ -16,7 +15,6 @@ if torch.cuda.is_available():
 # ---- 2) (Opcional) Silenciar/autolimitar aviso de Inductor
 try:
     import torch._inductor.config as inductor_config
-    # Desactiva el autotune "pesado" para GEMM si no lo necesitas
     inductor_config.max_autotune_gemm = False
 except Exception:
     pass
@@ -41,8 +39,8 @@ class LocalLLM:
         max_new_tokens: int = 256,
         temperature: float = 0.3,
         top_p: float = 0.9,
-        repetition_penalty=1.2,  
-        no_repeat_ngram_size=3,  
+        repetition_penalty=1.2,
+        no_repeat_ngram_size=3,
     ):
         self.base_dir = base_dir or Path(__file__).parent
         self.model_key = model
@@ -69,7 +67,7 @@ class LocalLLM:
             prompt,
             return_tensors="pt",
             add_special_tokens=True,
-            padding=False  # single prompt → no pad tokens
+            padding=False
         )
 
         input_ids = tk["input_ids"].to(self._model.device)
@@ -87,70 +85,57 @@ class LocalLLM:
                 eos_token_id=self._tokenizer.eos_token_id,
             )
 
-        # Return only the newly generated text (skip the prompt)
         gen_ids = output_ids[0, input_ids.shape[-1]:]
         raw = self._tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
-
         return self._postprocess_output(raw, mode=mode)
-
 
     # ------------------------------ cleaning / extraction
     def _postprocess_output(self, text, mode="default"):
         """
-        Keep only the assistant's usable content.
-        Priority:
-          1) Extract between <EJEMPLO>...</EJEMPLO> and <RESUMEN>...</RESUMEN> if present.
-          2) Otherwise, strip role markers like `<|assistant|>`, `Asistente:` etc.
+        Limpia la salida según el modo:
+        - explain: extrae TEMATICA/OBJETIVO/EXPLICACION/CONEXION (o ERROR)
+        - default: limpia marcadores y devuelve texto usable (o EJEMPLO/RESUMEN si aplica)
         """
-
         if mode == "explain":
-            import re
-
-            # Si el modelo devolvió un ERROR
+            # ERROR explícito
             m_err = re.search(r"<ERROR>.*?</ERROR>", text, flags=re.S | re.I)
             if m_err:
                 return m_err.group(0).strip()
 
-            # Buscar bloques principales
             blocks = {}
             for tag in ["TEMATICA", "OBJETIVO", "EXPLICACION", "CONEXION"]:
                 m = re.search(fr"<{tag}>(.*?)</{tag}>", text, flags=re.S | re.I)
                 if m:
                     blocks[tag] = m.group(1).strip()
 
-            # Si hay algo, construir solo hasta CONEXION
             if blocks:
                 out = []
-                if "TEMATICA" in blocks:
-                    out.append("Temática: " + blocks["TEMATICA"])
-                if "OBJETIVO" in blocks:
-                    out.append("Objetivo: " + blocks["OBJETIVO"])
-                if "EXPLICACION" in blocks:
-                    out.append("Explicación: " + blocks["EXPLICACION"])
-                if "CONEXION" in blocks:
-                    out.append("Conexión: " + blocks["CONEXION"])
+                if "TEMATICA" in blocks:    out.append("Temática: " + blocks["TEMATICA"])
+                if "OBJETIVO" in blocks:    out.append("Objetivo: " + blocks["OBJETIVO"])
+                if "EXPLICACION" in blocks: out.append("Explicación: " + blocks["EXPLICACION"])
+                if "CONEXION" in blocks:    out.append("Conexión: " + blocks["CONEXION"])
                 return "\n".join(out)
 
-            # Si nada coincide, devolver limpio sin role markers
+            # Fallback minimal
             t = re.sub(r"^\s*(<\|assistant\|>|Asistente:)", "", text, flags=re.I)
             return t.strip()
-        else:
 
-            def _extract(tag):
-                m = re.search(fr"<{tag}>(.*?)</{tag}>", text, flags=re.S|re.I)
-                return (m.group(1).strip() if m else "")
-            ejemplo = _extract("EJEMPLO")
-            resumen = _extract("RESUMEN")
-            if ejemplo or resumen:
-                parts = []
-                if ejemplo: parts += ["Ejemplo:", ejemplo]
-                if resumen: parts += ["\nResumen:", resumen]
-                return "\n".join(parts).strip()
+        # ---- default (chat de Problemas)
+        def _extract(tag):
+            m = re.search(fr"<{tag}>(.*?)</{tag}>", text, flags=re.S|re.I)
+            return (m.group(1).strip() if m else "")
+        ejemplo = _extract("EJEMPLO")
+        resumen = _extract("RESUMEN")
+        if ejemplo or resumen:
+            parts = []
+            if ejemplo: parts += ["Ejemplo:", ejemplo]
+            if resumen: parts += ["\nResumen:", resumen]
+            return "\n".join(parts).strip()
 
-            # Fallback: trim common chat scaffolding
-            t = re.sub(r"^\s*(<\|assistant\|>|\*\*Asistente:?\*\*|Asistente:)\s*", "", text, flags=re.I)
-            t = re.sub(r"^\s*(<\|system\|>|<\|user\|>).*", "", t, flags=re.I)  # safety if model re-echoes
-            return t.strip()
+        # Limpieza de marcadores de rol
+        t = re.sub(r"^\s*(<\|assistant\|>|\*\*Asistente:?\*\*|Asistente:)\s*", "", text, flags=re.I)
+        t = re.sub(r"^\s*(<\|system\|>|<\|user\|>).*", "", t, flags=re.I)
+        return t.strip()
 
     # ------------------------------ internals
     def _resolve_model_dir(self) -> Path:
@@ -163,42 +148,43 @@ class LocalLLM:
     def _load_model(self):
         model_dir = self._resolve_model_dir()
 
-        # Use slow tokenizer if fast is not available (e.g., SentencePiece)
         self._tokenizer = AutoTokenizer.from_pretrained(
             model_dir,
             local_files_only=True,
             use_fast=False,
-            trust_remote_code=True,  # some small models use custom code
-        )
-
-        self._model = AutoModelForCausalLM.from_pretrained(
-            model_dir,
-            local_files_only=True,
-            torch_dtype=self._dtype,
-            device_map=self._device_map,     # "auto" if available; else CPU/MPS/CUDA
             trust_remote_code=True,
         )
 
-        # ensure eos token if missing
+        # Si device_map falla por ausencia de accelerate, caer a None
+        try:
+            self._model = AutoModelForCausalLM.from_pretrained(
+                model_dir,
+                local_files_only=True,
+                torch_dtype=self._dtype,
+                device_map=self._device_map,
+                trust_remote_code=True,
+            )
+        except Exception:
+            self._model = AutoModelForCausalLM.from_pretrained(
+                model_dir,
+                local_files_only=True,
+                torch_dtype=self._dtype,
+                trust_remote_code=True,
+            ).to(self._device)
+
         if self._tokenizer.eos_token_id is None and self._tokenizer.pad_token_id is not None:
             self._tokenizer.eos_token_id = self._tokenizer.pad_token_id
 
     def _pick_device(self):
-        """
-        Returns (device, dtype, device_map)
-        Prefer device_map='auto' when accelerate is available;
-        otherwise fallback to a single device.
-        """
         device_map = "auto"
         dtype = torch.float16
 
-        if torch.backends.mps.is_available():   # Apple Silicon
+        if torch.backends.mps.is_available():
             device = torch.device("mps")
             device_map = {"": device}
             dtype = torch.float16
         elif torch.cuda.is_available():
             device = torch.device("cuda")
-            # keep device_map='auto' to spread layers if multi-GPU
             dtype = torch.float16
         else:
             device = torch.device("cpu")
@@ -208,13 +194,12 @@ class LocalLLM:
         return device, dtype, device_map
 
     def _build_prompt(self, question: str, system_prompt: Optional[str]) -> str:
-        # Strong, explicit Spanish policy for the model itself
         POLICY_ES = (
             "Eres un tutor de matemáticas en español. Políticas OBLIGATORIAS:\n"
             "1) Solo respondes temas de matemáticas escolares/universitarias. "
             "   Si la consulta no es de matemáticas, responde exactamente: "
             "   'Este tutor solo responde preguntas de matemáticas. Reformula tu consulta dentro de ese ámbito.'\n"
-            "2) Siempre responde en español, con pasos claros. Si el usuario escribe en otro idioma, responde exactamente: "
+            "2) Siempre respondes en español, con pasos claros. Si el usuario escribe en otro idioma, responde exactamente: "
             "   'Por favor, formula tu pregunta en español para poder ayudarte.'\n"
             "3) Si la consulta es grosera, inapropiada u ofensiva, responde exactamente: "
             "   'No puedo ayudar con ese tipo de contenido.'\n"
@@ -224,14 +209,12 @@ class LocalLLM:
         system = system_prompt or POLICY_ES
 
         if self.model_key == "qwen":
-            # Generic chat wrapper for Qwen‑like models
             return (
                 f"<|system|>\n{system}\n"
                 f"<|user|>\n{question}\n"
                 f"<|assistant|>\n"
             )
         else:
-            # Gemma/generic IT wrapper
             return (
                 f"{system}\n\n"
                 f"Usuario: {question}\n"
