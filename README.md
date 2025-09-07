@@ -68,6 +68,7 @@ A continuación se presentan diagramas que describen la arquitectura de clases, 
 
 ---
 
+
 ### Diagrama de clases
 
 ```mermaid
@@ -319,3 +320,21 @@ pyinstaller ^
   --hidden-import PySide6.QtSvgWidgets ^
   main.py
 ```
+
+## Funcionamiento
+
+### Lecciones
+![video-lessons](assets/demo/video-lessons.gif)
+
+
+### Lecciones - Explicame esto
+![video-lessons-explica](assets/demo/video-lessons-explica.gif)
+
+
+
+### Problemas
+![video-problemas](assets/demo/video-problemas.gif)
+
+### Perfil
+![video-perfil](assets/demo/video-perfil.gif)
+
