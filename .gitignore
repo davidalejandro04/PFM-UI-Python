@@ -1,3 +1,5 @@
-*.pyc
 /gemma-3-1b-it-sft-dpo
 /Qwen3-0.6B-sft-dpo
+/.test_tmp/
+/node_modules/
+/dist/

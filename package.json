@@ -1,0 +1,17 @@
+{
+  "name": "tutormate-electron",
+  "version": "1.0.0",
+  "description": "Desktop math tutor rebuilt as an Electron app with Ollama and WebLLM local runtimes.",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "test": "node tests-node/app.test.mjs"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0"
+  },
+  "dependencies": {
+    "@mlc-ai/web-llm": "^0.2.81"
+  }
+}
