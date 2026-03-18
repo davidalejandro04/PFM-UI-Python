@@ -76,6 +76,16 @@ export function buildVisualFlashcardUserPrompt() {
   ].join(" ");
 }
 
+export const kidMathGatePrompt =
+  "Clasifica una pregunta. " +
+  "Responde solo con una etiqueta exacta en minusculas: kid_math o not_kid_math. " +
+  "Usa kid_math solo si la pregunta trata sobre matematicas escolares para ninos o adolescentes. " +
+  "Usa not_kid_math si no es matematicas o si requiere contenido avanzado fuera de ese nivel.";
+
+export function buildKidMathGateUserPrompt(question) {
+  return `Pregunta: ${question}`;
+}
+
 export const studyClassifierPrompt =
   "Clasifica preguntas de estudiantes de matematicas. " +
   "Devuelve solo JSON valido con esta forma exacta: " +

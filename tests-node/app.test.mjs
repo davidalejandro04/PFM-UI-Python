@@ -11,6 +11,7 @@ import {
   recordLessonCompletion,
   setupProfile,
   trackConceptStudy,
+  trackLessonFlashcards,
   trackStruggleSignal
 } from "../src/utils/profile.mjs";
 import {
@@ -41,6 +42,7 @@ function run() {
   assert.ok(completedPairs(profile).has("Unidad::Leccion"));
   assert.deepEqual(profile.tutorSessions, []);
   assert.deepEqual(profile.struggleSignals, []);
+  assert.deepEqual(profile.lessonFlashcards, []);
 
   profile = trackConceptStudy(profile, {
     topic: "Fracciones equivalentes",
@@ -87,6 +89,29 @@ function run() {
   assert.equal(profile.struggleSignals.length, 1);
   assert.equal(profile.struggleSignals[0].failures, 4);
   assert.equal(profile.struggleSignals[0].occurrences, 2);
+
+  profile = trackLessonFlashcards(profile, {
+    unit: "Unidad",
+    lessonTitle: "Leccion",
+    theme: "Fracciones equivalentes",
+    source: "lesson-text",
+    title: "Ayuda sobre fracciones",
+    cards: [
+      { title: "Concepto general", body: "Una fraccion representa partes iguales." }
+    ]
+  });
+  profile = trackLessonFlashcards(profile, {
+    unit: "Unidad",
+    lessonTitle: "Leccion",
+    theme: "Fracciones equivalentes",
+    source: "lesson-image",
+    title: "Que es esto?",
+    cards: [
+      { title: "Ejemplo guiado", body: "Dos cuartos equivalen a una mitad." }
+    ]
+  });
+  assert.equal(profile.lessonFlashcards.length, 1);
+  assert.equal(profile.lessonFlashcards[0].entries.length, 2);
 
   const ratio = completionRatio(lessons, new Set());
   assert.ok(ratio.total > 0);

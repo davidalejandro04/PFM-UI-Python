@@ -17,7 +17,10 @@ const DEFAULT_PROFILE = {
   lessonsCompleted: 0,
   completed: [],
   activity: [],
-  conceptProgress: []
+  conceptProgress: [],
+  tutorSessions: [],
+  struggleSignals: [],
+  lessonFlashcards: []
 };
 
 const DEFAULT_SETTINGS = {
@@ -26,6 +29,8 @@ const DEFAULT_SETTINGS = {
   responseMode: "coach",
   theme: "light"
 };
+
+const activeChatControllers = new Map();
 
 function userFile(name) {
   return path.join(app.getPath("userData"), name);
@@ -71,23 +76,71 @@ async function listOllamaModels(baseUrl) {
   }));
 }
 
-async function chatWithOllama({ baseUrl, model, messages }) {
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      stream: false,
-      messages
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`Ollama devolvio ${response.status}`);
+async function chatWithOllama({
+  baseUrl,
+  model,
+  messages,
+  requestId = "",
+  maxTokens = null,
+  temperature = null
+}) {
+  const safeRequestId = String(requestId || "").trim();
+  const controller = new AbortController();
+  if (safeRequestId) {
+    activeChatControllers.set(safeRequestId, controller);
   }
 
-  const payload = await response.json();
-  return payload.message?.content || "";
+  const ollamaOptions = {};
+  if (Number.isFinite(Number(maxTokens)) && Number(maxTokens) > 0) {
+    ollamaOptions.num_predict = Math.round(Number(maxTokens));
+  }
+  if (Number.isFinite(Number(temperature))) {
+    ollamaOptions.temperature = Number(temperature);
+  }
+
+  try {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        messages,
+        ...(Object.keys(ollamaOptions).length ? { options: ollamaOptions } : {})
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ollama devolvio ${response.status}`);
+    }
+
+    const payload = await response.json();
+    return payload.message?.content || "";
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      const abortError = new Error("Solicitud cancelada.");
+      abortError.name = "AbortError";
+      throw abortError;
+    }
+    throw error;
+  } finally {
+    if (safeRequestId) {
+      activeChatControllers.delete(safeRequestId);
+    }
+  }
+}
+
+function cancelOllamaChat(_event, requestId) {
+  const safeRequestId = String(requestId || "").trim();
+  const controller = activeChatControllers.get(safeRequestId);
+  if (!controller) {
+    return { ok: false };
+  }
+
+  controller.abort();
+  activeChatControllers.delete(safeRequestId);
+  return { ok: true };
 }
 
 async function captureRegion(event, rect) {
@@ -172,6 +225,7 @@ app.whenReady().then(() => {
   ipcMain.handle("settings:save", (_event, settings) => writeJson(userFile("settings.json"), settings));
   ipcMain.handle("ollama:list-models", (_event, baseUrl) => listOllamaModels(baseUrl));
   ipcMain.handle("ollama:chat", (_event, payload) => chatWithOllama(payload));
+  ipcMain.handle("ollama:cancel-chat", cancelOllamaChat);
   ipcMain.handle("window:capture-region", captureRegion);
 
   createWindow();

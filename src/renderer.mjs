@@ -11,6 +11,7 @@ import {
   resetProgress,
   setupProfile,
   trackConceptStudy,
+  trackLessonFlashcards,
   trackStruggleSignal
 } from "./utils/profile.mjs";
 import {
@@ -22,6 +23,7 @@ import {
 } from "./utils/lessons.mjs";
 import { wrapStageHtml } from "./utils/content.mjs";
 import {
+  buildKidMathGateUserPrompt,
   buildClassifierUserPrompt,
   buildContextFlashcardUserPrompt,
   buildExerciseTutorUserPrompt,
@@ -31,6 +33,7 @@ import {
   contextFlashcardPrompt,
   exerciseTutorPrompt,
   exerciseTracePrompt,
+  kidMathGatePrompt,
   modeLabels,
   studyClassifierPrompt,
   studyDeckPrompt
@@ -137,7 +140,6 @@ const state = {
   currentLesson: null,
   stageIndex: 0,
   practiceMode: "coach",
-  chatMessages: [],
   practiceSession: null,
   isThinking: false,
   explanation: { open: false, busy: false, cards: [] },
@@ -177,9 +179,13 @@ const state = {
   loadingPanel: {
     open: true,
     title: "Preparando TutorMate",
-    detail: "Un momento. Estoy acomodando tus lecciones y preparando el tutor local."
+    detail: "Un momento. Estoy acomodando tus lecciones y preparando el tutor local.",
+    cancelable: false,
+    requestId: ""
   }
 };
+
+const cancelledRequestIds = new Set();
 
 const root = document.getElementById("app");
 const modalRoot = document.getElementById("modal-root");
@@ -454,11 +460,13 @@ function cloneSettings(source = state.settingsDraft || state.settings) {
   return normalizeSettings({ ...source }, state.availableModels);
 }
 
-function openLoadingPanel({ title, detail }) {
+function openLoadingPanel({ title, detail, cancelable = false, requestId = "" }) {
   state.loadingPanel = {
     open: true,
     title: title || "Preparando tutor local",
-    detail: detail || "Estoy preparando tu tutor local."
+    detail: detail || "Estoy preparando tu tutor local.",
+    cancelable,
+    requestId
   };
   render();
 }
@@ -467,9 +475,23 @@ function closeLoadingPanel() {
   if (!state.loadingPanel.open) return;
   state.loadingPanel = {
     ...state.loadingPanel,
-    open: false
+    open: false,
+    cancelable: false,
+    requestId: ""
   };
   render();
+}
+
+function isRequestCancelled(requestId = "") {
+  return Boolean(requestId) && cancelledRequestIds.has(requestId);
+}
+
+function finishRequest(requestId = "") {
+  if (!requestId) return;
+  cancelledRequestIds.delete(requestId);
+  if (state.loadingPanel.requestId === requestId) {
+    closeLoadingPanel();
+  }
 }
 
 async function bootstrap() {
@@ -688,10 +710,11 @@ function renderFlashcardModal() {
   if (!state.flashcards.open || !state.flashcards.cards.length) return "";
 
   const card = state.flashcards.cards[state.flashcards.index] || state.flashcards.cards[0];
+  const isGameCard = card?.kind === "game";
 
   return `
     <div class="modal flashcard-modal">
-      <div class="modal-card flashcard-modal-card">
+      <div class="modal-card flashcard-modal-card ${isGameCard ? "game-view" : ""}">
         <div class="modal-header">
           <div>
             <span class="tag">${escapeHtml(flashcardCountLabel())}</span>
@@ -700,9 +723,9 @@ function renderFlashcardModal() {
           </div>
           <button class="ghost-btn" data-action="close-flashcards">Cerrar</button>
         </div>
-        <div class="flashcard-stage">
+        <div class="flashcard-stage ${isGameCard ? "game-view" : ""}">
           <button class="flashcard-arrow" data-action="flashcard-prev" ${state.flashcards.index === 0 ? "disabled" : ""}>←</button>
-          <div class="flashcard-content-wrap">
+          <div class="flashcard-content-wrap ${isGameCard ? "game-view" : ""}">
             ${renderModalFlashcardCard(card)}
           </div>
           <button class="flashcard-arrow" data-action="flashcard-next" ${state.flashcards.index >= state.flashcards.cards.length - 1 ? "disabled" : ""}>→</button>
@@ -831,10 +854,13 @@ function tutorMetrics() {
   const events = sessions.flatMap((session) => session.events || []);
   const attempts = events.filter((event) => event.type === "step-attempt");
   const decisions = events.flatMap((event) => event.decisions || []);
+  const flashcardGroups = state.profile.lessonFlashcards || [];
 
   return {
     sessions: sessions.length,
     struggleSignals: (state.profile.struggleSignals || []).length,
+    savedFlashcardGroups: flashcardGroups.length,
+    savedFlashcardSets: flashcardGroups.reduce((sum, group) => sum + (group.entries || []).length, 0),
     contextHelps: sessions.filter((session) => session.kind === "context-help" || session.kind === "visual-help").length,
     conceptSessions: sessions.filter((session) => session.kind === "concept").length,
     exerciseSessions: sessions.filter((session) => session.kind === "exercise").length,
@@ -1115,16 +1141,6 @@ function renderLessonReader() {
   `;
 }
 
-function renderTranscript() {
-  if (!state.chatMessages.length) {
-    return `<div class="empty-state">Pregunta algo sobre matematicas y el tutor decidira si debe construir un recorrido conceptual, una practica guiada o frenar por no ser contenido matematico.</div>`;
-  }
-
-  return state.chatMessages.map((message) => `
-    <div class="message ${message.role === "user" ? "user" : "bot"}">${formatRichText(message.text)}</div>
-  `).join("");
-}
-
 function renderSessionSummary() {
   if (!state.practiceSession) {
     return `<div class="empty-state">Todavia no hay una sesion de estudio activa.</div>`;
@@ -1190,29 +1206,39 @@ function renderStudyGameCard(card, gameState) {
     <div class="game-card">
       <p class="muted">${escapeHtml(card.instructions || "Relaciona cada idea con su descripcion.")}</p>
       <div class="match-grid">
-        <div class="match-column">
-          ${(gameState?.pairs || []).map((pair) => {
-            const placed = placements[pair.leftId];
-            const option = (gameState.options || []).find((item) => item.id === placed);
-            return `
-              <div class="match-row">
-                <div class="match-left">${escapeHtml(pair.left)}</div>
-                <div class="match-dropzone" data-dropzone="match" data-game-id="${escapeHtml(card.id)}" data-left-id="${escapeHtml(pair.leftId)}">
-                  ${option
-                    ? `<span class="match-chip placed">${escapeHtml(option.text)}</span>
-                       <button class="ghost-btn tiny" data-action="remove-match" data-game-id="${escapeHtml(card.id)}" data-left-id="${escapeHtml(pair.leftId)}">Quitar</button>`
-                    : `<span class="muted">Suelta aqui</span>`}
+        <section class="match-panel match-panel-targets">
+          <div class="match-panel-head">
+            <strong>Opciones arriba</strong>
+            <span class="muted">Completa cada espacio con la carta correcta.</span>
+          </div>
+          <div class="match-column">
+            ${(gameState?.pairs || []).map((pair) => {
+              const placed = placements[pair.leftId];
+              const option = (gameState.options || []).find((item) => item.id === placed);
+              return `
+                <div class="match-row">
+                  <div class="match-left">${escapeHtml(pair.left)}</div>
+                  <div class="match-dropzone ${option ? "filled" : ""}" data-dropzone="match" data-game-id="${escapeHtml(card.id)}" data-left-id="${escapeHtml(pair.leftId)}">
+                    ${option
+                      ? `<span class="match-chip placed">${escapeHtml(option.text)}</span>
+                         <button class="ghost-btn tiny" data-action="remove-match" data-game-id="${escapeHtml(card.id)}" data-left-id="${escapeHtml(pair.leftId)}">Quitar</button>`
+                      : `<span class="muted">Suelta aqui una carta</span>`}
+                  </div>
                 </div>
-              </div>
-            `;
-          }).join("")}
-        </div>
-        <div class="match-column">
+              `;
+            }).join("")}
+          </div>
+        </section>
+        <section class="match-panel match-panel-bank">
+          <div class="match-panel-head">
+            <strong>Cartas para usar</strong>
+            <span class="muted">Arrastra una carta desde aqui hacia la opcion correcta.</span>
+          </div>
           <div class="match-bank">
             ${availableOptions.length
               ? availableOptions.map((option) => `
                   <div
-                    class="match-chip"
+                    class="match-chip available"
                     draggable="true"
                     data-game-id="${escapeHtml(card.id)}"
                     data-game-option-id="${escapeHtml(option.id)}"
@@ -1220,7 +1246,7 @@ function renderStudyGameCard(card, gameState) {
                 `).join("")
               : `<div class="empty-state">Todos los conceptos ya fueron colocados.</div>`}
           </div>
-        </div>
+        </section>
       </div>
       ${gameState?.completed ? `<div class="tag good">Juego completado. El concepto quedo marcado como conocido.</div>` : ""}
       ${gameState?.feedback ? `<p class="muted">${escapeHtml(gameState.feedback)}</p>` : ""}
@@ -1379,38 +1405,33 @@ function renderPracticePage() {
         <div class="row">
           <div>
             <h2>Estudio guiado</h2>
-            <p class="muted">Primero clasifico la pregunta. Luego genero tarjetas de concepto o un problema guiado por pasos segun corresponda.</p>
+            <p class="muted">Escribe una duda o un ejercicio y el sistema generara directamente tarjetas o un problema guiado, sin formato de conversacion.</p>
           </div>
-        </div>
-        <div class="row">
-          ${Object.entries(modeLabels).map(([key, label]) => `
-            <button class="chip-btn ${state.practiceMode === key ? "active" : ""}" data-action="practice-mode" data-mode="${key}">${label}</button>
-          `).join("")}
         </div>
         <p class="muted">${escapeHtml(readiness.reason || "")}</p>
       </section>
-      <section class="split">
-        <div class="chat-card">
-          <div class="chat-feed">
-            ${renderTranscript()}
-            ${state.isThinking ? `<div class="typing"><span></span><span></span><span></span></div>` : ""}
-          </div>
-          ${!readiness.ready ? `<div class="empty-state">${escapeHtml(readiness.reason)}</div>` : ""}
-          <form class="composer" data-form="chat">
-            <textarea id="chat-input" name="question" placeholder="Escribe una duda de matematicas, un concepto o un ejercicio..." ${(state.isThinking || !readiness.ready) ? "disabled" : ""}></textarea>
-            <button class="btn primary" type="submit" ${(state.isThinking || !readiness.ready) ? "disabled" : ""}>Preguntar</button>
-          </form>
+      <section class="card stack">
+        <div>
+          <h3 style="margin:0 0 6px;">Nueva interaccion</h3>
+          <p class="muted">La pregunta no se muestra como chat. Solo dispara el recorrido de estudio correspondiente.</p>
         </div>
-        <aside class="workflow-card stack">
-          <div>
-            <h3 style="margin-top:0;">Workflow activo</h3>
-            <p class="muted">1. Clasifico la pregunta. 2. Reviso si el concepto ya fue estudiado. 3. Genero tarjetas flotantes o pasos secuenciales.</p>
-          </div>
-          ${renderSessionSummary()}
-          <div class="card stack">
-            <strong>Conceptos del estudiante</strong>
-            ${renderKnownConceptChips()}
-          </div>
+        ${!readiness.ready ? `<div class="empty-state">${escapeHtml(readiness.reason)}</div>` : ""}
+        <form class="composer" data-form="chat">
+          <textarea id="chat-input" name="question" placeholder="Escribe una duda de matematicas, un concepto o un ejercicio..." ${(state.isThinking || !readiness.ready) ? "disabled" : ""}></textarea>
+          <button class="btn primary" type="submit" ${(state.isThinking || !readiness.ready) ? "disabled" : ""}>Generar</button>
+        </form>
+        ${state.isThinking ? `<div class="typing"><span></span><span></span><span></span></div>` : ""}
+      </section>
+      <section class="card stack">
+        ${renderSessionSummary()}
+        <div class="card stack">
+          <strong>Conceptos del estudiante</strong>
+          ${renderKnownConceptChips()}
+        </div>
+        <div class="stack">
+          <strong>Ideas rapidas</strong>
+          <p class="muted">Cada ejemplo dispara directamente tarjetas o un problema guiado, sin abrir una conversacion visible.</p>
+          <div class="choice-grid">
           ${[
             "Explicame el concepto de fracciones equivalentes",
             "Resuelve 3x + 5 = 20 paso a paso",
@@ -1418,7 +1439,8 @@ function renderPracticePage() {
           ].map((prompt) => `
             <button class="btn secondary" data-action="quick-prompt" data-prompt="${escapeHtml(prompt)}">${escapeHtml(prompt)}</button>
           `).join("")}
-        </aside>
+          </div>
+        </div>
       </section>
       ${renderPracticeSession()}
     </div>
@@ -1431,6 +1453,9 @@ function renderTrackingPage() {
   const concepts = conceptMetrics().slice(0, 12);
   const struggleSignals = [...(state.profile.struggleSignals || [])]
     .sort((left, right) => String(right.lastDetectedAt || right.ts || "").localeCompare(String(left.lastDetectedAt || left.ts || "")))
+    .slice(0, 8);
+  const lessonFlashcardGroups = [...(state.profile.lessonFlashcards || [])]
+    .sort((left, right) => String(right.updatedAt || right.ts || "").localeCompare(String(left.updatedAt || left.ts || "")))
     .slice(0, 8);
   const decisionMap = (state.profile.tutorSessions || [])
     .flatMap((session) => session.events || [])
@@ -1459,6 +1484,7 @@ function renderTrackingPage() {
         <article class="stats-card"><p class="muted">Incorrectas</p><strong>${metrics.incorrectAttempts}</strong><span class="muted">intentos a corregir</span></article>
         <article class="stats-card"><p class="muted">Ambiguas</p><strong>${metrics.ambiguousAttempts}</strong><span class="muted">faltaron detalles</span></article>
         <article class="stats-card"><p class="muted">Alertas</p><strong>${metrics.struggleSignals}</strong><span class="muted">pasos marcados</span></article>
+        <article class="stats-card"><p class="muted">Tarjetas</p><strong>${metrics.savedFlashcardSets}</strong><span class="muted">${metrics.savedFlashcardGroups} grupos tematicos</span></article>
         <article class="stats-card"><p class="muted">Pasos</p><strong>${metrics.stepsCompleted}</strong><span class="muted">pasos completados</span></article>
         <article class="stats-card"><p class="muted">Decisiones</p><strong>${metrics.decisionsLogged}</strong><span class="muted">acciones del tutor</span></article>
       </section>
@@ -1488,6 +1514,30 @@ function renderTrackingPage() {
             `).join("") || `<div class="empty-state">Aun no hay decisiones registradas.</div>`}
           </div>
         </aside>
+      </section>
+      <section class="card stack">
+        <div class="card-head">
+          <div>
+            <h3 style="margin:0;">Tarjetas guardadas por leccion</h3>
+            <p class="muted">Las ayudas de texto e imagen quedan almacenadas por unidad, leccion y tema detectado.</p>
+          </div>
+          <span class="tag">${lessonFlashcardGroups.length} grupos visibles</span>
+        </div>
+        <div class="stack">
+          ${lessonFlashcardGroups.length
+            ? lessonFlashcardGroups.map((group) => `
+                <div class="card tracking-session">
+                  <div class="card-head">
+                    <div>
+                      <strong>${escapeHtml(group.theme || "Tema de leccion")}</strong>
+                      <p class="muted">${escapeHtml(group.unit || "Sin unidad")} · ${escapeHtml(group.lessonTitle || "Sin leccion")}</p>
+                    </div>
+                    <span class="tag">${(group.entries || []).length} sets</span>
+                  </div>
+                </div>
+              `).join("")
+            : `<div class="empty-state">Todavia no hay tarjetas guardadas por contenido de leccion.</div>`}
+        </div>
       </section>
       <section class="card stack">
         <div class="card-head">
@@ -1745,6 +1795,13 @@ function renderLoadingPanel() {
   return `
     <div class="modal loading-modal">
       <div class="modal-card loading-card">
+        ${state.loadingPanel.cancelable
+          ? `
+            <div class="loading-close-row">
+              <button class="ghost-btn loading-close-btn" data-action="cancel-loading" aria-label="Cancelar generacion">X</button>
+            </div>
+          `
+          : ""}
         <div class="loading-scene">
           <div class="loading-orbit orbit-a"></div>
           <div class="loading-orbit orbit-b"></div>
@@ -1776,6 +1833,27 @@ function buildFallbackClassifier(question = "") {
     reason: exercise
       ? "Se detecto lenguaje de resolucion o practica."
       : "Se detecto una solicitud de explicacion conceptual."
+  };
+}
+
+function buildFallbackKidMathGate(question = "") {
+  const text = String(question || "").toLowerCase();
+  const schoolMath = /(suma|sumar|resta|restar|multiplic|division|dividir|fraccion|decimal|porcentaje|numero|ecuacion|ecuaciones|area|perimetro|triang|rectang|geometr|medida|patron|figura|problema|calcula|resuelve|fracciones|comparar|ordenar)/.test(text);
+  const advancedMath = /(deriv|integral|limite|matriz|vector|tensor|laplace|fourier|gradiente|determinante|eigen|autovalor|autovector)/.test(text);
+  return schoolMath && !advancedMath;
+}
+
+function normalizeKidMathGate(raw, question = "") {
+  const answer = String(raw || "").trim().toLowerCase();
+  if (answer.includes("not_kid_math")) {
+    return { isKidMath: false, label: "not_kid_math" };
+  }
+  if (answer.includes("kid_math")) {
+    return { isKidMath: true, label: "kid_math" };
+  }
+  return {
+    isKidMath: buildFallbackKidMathGate(question),
+    label: buildFallbackKidMathGate(question) ? "kid_math" : "not_kid_math"
   };
 }
 
@@ -2097,6 +2175,29 @@ async function persistConceptStudy({ topic, relatedTopics = [], status = "studyi
   await saveProfileState();
 }
 
+async function persistLessonFlashcards({
+  theme = "",
+  source = "lesson-help",
+  selection = "",
+  title = "",
+  subtitle = "",
+  cards = []
+}) {
+  if (!state.currentLesson || !cards.length) return;
+
+  state.profile = trackLessonFlashcards(state.profile, {
+    unit: state.selectedUnit || "",
+    lessonTitle: state.currentLesson.title || "",
+    theme: theme || state.currentLesson.title || "Tema de leccion",
+    source,
+    selection,
+    title,
+    subtitle,
+    cards
+  });
+  await saveProfileState();
+}
+
 async function recordStepStruggle(step, failures) {
   const session = state.practiceSession;
   if (!session?.conceptTopic) return;
@@ -2130,7 +2231,7 @@ async function maybeMarkCurrentConceptKnown() {
   render();
 }
 
-async function generateStudyDeck(question, classification) {
+async function generateStudyDeck(question, classification, options = {}) {
   const concepts = knownConcepts(state.profile).map((item) => item.topic);
   const answer = await askWithOllama([
     { role: "system", content: studyDeckPrompt },
@@ -2144,12 +2245,12 @@ async function generateStudyDeck(question, classification) {
         knownConcepts: concepts
       })
     }
-  ]);
+  ], options);
 
   return normalizeStudyDeck(safeJsonParse(answer, {}), question, classification);
 }
 
-async function generateExercisePlan(question, classification) {
+async function generateExercisePlan(question, classification, options = {}) {
   const concepts = knownConcepts(state.profile).map((item) => item.topic);
   const answer = await askWithOllama([
     { role: "system", content: exerciseTutorPrompt },
@@ -2164,26 +2265,76 @@ async function generateExercisePlan(question, classification) {
         mode: state.practiceMode
       })
     }
-  ]);
+  ], options);
 
   return normalizeExercisePlan(safeJsonParse(answer, {}), question, classification);
 }
 
-async function generateExerciseTrace(question) {
+async function generateExerciseTrace(question, options = {}) {
   const answer = await askWithOllama([
     { role: "system", content: exerciseTracePrompt },
     { role: "user", content: buildExerciseTraceUserPrompt(question, 4) }
-  ]);
+  ], options);
 
   return Array.isArray(safeJsonParse(answer, [])) ? safeJsonParse(answer, []) : [];
 }
 
-async function handleStudyQuestion(question) {
+async function handleStudyQuestion(question, options = {}) {
+  const scopeText = await askWithOllama([
+    { role: "system", content: kidMathGatePrompt },
+    { role: "user", content: buildKidMathGateUserPrompt(question) }
+  ], {
+    requestId: options.requestId || "",
+    maxTokens: 8,
+    temperature: 0
+  });
+  const scopeGate = normalizeKidMathGate(scopeText, question);
+
+  if (!scopeGate.isKidMath) {
+    const classification = {
+      kind: "non_math",
+      topic: question,
+      conceptTopic: "",
+      relatedTopics: [],
+      reason: "La pregunta no corresponde a matematicas infantiles para este espacio de estudio."
+    };
+    const sessionId = await createTutorSessionRecord({
+      kind: "non_math",
+      topic: classification.topic,
+      conceptTopic: classification.conceptTopic,
+      source: "practice-gate",
+      status: "completed"
+    });
+    await appendTutorSessionEvent(sessionId, {
+      type: "scope-gate",
+      decisions: ["h"],
+      detail: "Filtro rapido: la pregunta quedo fuera de matematicas infantiles."
+    });
+    state.practiceSession = preparePracticeSession({
+      kind: "non_math",
+      classification,
+      reusedConcept: false,
+      sessionId
+    });
+    state.exerciseOverlay = { open: false, index: 0 };
+    openFlashcards({
+      source: "practice-scope-gate",
+      title: "Pregunta fuera de alcance",
+      subtitle: "Este espacio solo responde matematicas infantiles.",
+      cards: [{
+        title: "No corresponde a este tutor",
+        body: "Tu pregunta no corresponde a matematicas infantiles. Prueba con operaciones, fracciones, geometria basica o problemas escolares."
+      }],
+      sessionId
+    });
+    return;
+  }
+
   const registeredConcepts = knownConcepts(state.profile).map((item) => item.topic);
   const classificationText = await askWithOllama([
     { role: "system", content: studyClassifierPrompt },
     { role: "user", content: buildClassifierUserPrompt(question, registeredConcepts) }
-  ]);
+  ], options);
   const classification = normalizeClassifierPayload(safeJsonParse(classificationText, {}), question);
 
   if (classification.kind === "non_math") {
@@ -2206,15 +2357,11 @@ async function handleStudyQuestion(question) {
       sessionId
     });
     state.exerciseOverlay = { open: false, index: 0 };
-    state.chatMessages.push({
-      role: "bot",
-      text: "Esto no parece una pregunta de matematicas, asi que no active las tarjetas ni la practica guiada."
-    });
     return;
   }
 
   if (classification.kind === "concept") {
-    const deck = await generateStudyDeck(question, classification);
+    const deck = await generateStudyDeck(question, classification, options);
     const sessionId = await createTutorSessionRecord({
       kind: "concept",
       topic: classification.topic,
@@ -2242,10 +2389,6 @@ async function handleStudyQuestion(question) {
       cards: deck.cards,
       sessionId
     });
-    state.chatMessages.push({
-      role: "bot",
-      text: `Detecte una duda de concepto sobre ${deck.topic}. Te prepare tarjetas de estudio con explicacion, ejemplo y un juego para conectar ideas.`
-    });
     await persistConceptStudy({
       topic: deck.topic,
       relatedTopics: deck.relatedTopics,
@@ -2258,9 +2401,9 @@ async function handleStudyQuestion(question) {
   const conceptTopic = classification.conceptTopic || classification.topic;
   const reusedConcept = hasStudiedConcept(state.profile, conceptTopic)
     || classification.relatedTopics.some((topic) => hasStudiedConcept(state.profile, topic));
-  const deck = reusedConcept ? null : await generateStudyDeck(question, classification);
-  const solution = await generateExercisePlan(question, classification);
-  const hiddenTrace = await generateExerciseTrace(question);
+  const deck = reusedConcept ? null : await generateStudyDeck(question, classification, options);
+  const solution = await generateExercisePlan(question, classification, options);
+  const hiddenTrace = await generateExerciseTrace(question, options);
   const sessionId = await createTutorSessionRecord({
     kind: "exercise",
     topic: classification.topic,
@@ -2298,13 +2441,6 @@ async function handleStudyQuestion(question) {
       sessionId
     });
   }
-  state.chatMessages.push({
-    role: "bot",
-    text: reusedConcept
-      ? `Detecte un ejercicio sobre ${classification.topic}. Como ya habia memoria previa para ${conceptTopic}, fui directo a la solucion guiada por pasos.`
-      : `Detecte un ejercicio sobre ${classification.topic}. Primero te prepare las tarjetas del concepto ${conceptTopic} y luego una solucion paso a paso para completar.`
-  });
-
   if (deck) {
     await persistConceptStudy({
       topic: deck.topic,
@@ -2348,11 +2484,20 @@ async function runTextExplanation() {
     return;
   }
 
+  const requestId = createLocalId("lesson-text");
+  openLoadingPanel({
+    title: "Generando ayuda",
+    detail: "Estoy preparando tarjetas a partir del texto que seleccionaste.",
+    cancelable: true,
+    requestId
+  });
+
   try {
     const answer = await askWithOllama([
       { role: "system", content: contextFlashcardPrompt },
       { role: "user", content: buildContextFlashcardUserPrompt(state.selectedText) }
-    ]);
+    ], { requestId });
+    if (isRequestCancelled(requestId)) return;
     const payload = normalizeContextFlashcards(safeJsonParse(answer, {}), state.selectedText, state.selectedText);
     const cards = payload.needsMoreContext
       ? [{
@@ -2381,6 +2526,14 @@ async function runTextExplanation() {
         status: "introduced",
         source: "lesson-context"
       });
+      await persistLessonFlashcards({
+        theme: payload.topic,
+        source: "lesson-text",
+        selection: state.selectedText,
+        title: `Ayuda sobre ${payload.topic}`,
+        subtitle: "Tarjetas generadas a partir de tu seleccion.",
+        cards
+      });
     }
     openFlashcards({
       source: "context-help",
@@ -2390,12 +2543,17 @@ async function runTextExplanation() {
       sessionId
     });
   } catch (error) {
+    if (error?.name === "AbortError" || isRequestCancelled(requestId)) {
+      return;
+    }
     openFlashcards({
       source: "context-help",
       title: "No pude generar la ayuda",
       subtitle: "Intenta seleccionando otra parte de la leccion.",
       cards: fallbackExplanationCards(`[Error] ${error.message}`, state.selectedText).map((card) => ({ title: card.title, body: card.body }))
     });
+  } finally {
+    finishRequest(requestId);
   }
   render();
 }
@@ -2405,16 +2563,30 @@ async function runImageExplanation() {
 
   const frame = document.getElementById("lesson-frame");
   if (!frame) return;
+  const cropRect = { ...state.lessonUi.cropRect };
+  const requestId = createLocalId("vision");
   state.lessonUi.cropAction = { ...state.lessonUi.cropAction, open: false };
+  state.lessonUi.cropRect = null;
+  state.lessonUi.dragStart = null;
+  state.lessonUi.hint = "";
+  syncLessonUi();
+  openLoadingPanel({
+    title: "Analizando recorte",
+    detail: "Estoy generando tarjetas a partir de la imagen seleccionada.",
+    cancelable: true,
+    requestId
+  });
 
   try {
     const frameBounds = frame.getBoundingClientRect();
     const capture = await window.bridge.captureRegion({
-      x: frameBounds.left + state.lessonUi.cropRect.x,
-      y: frameBounds.top + state.lessonUi.cropRect.y,
-      width: state.lessonUi.cropRect.width,
-      height: state.lessonUi.cropRect.height
+      x: frameBounds.left + cropRect.x,
+      y: frameBounds.top + cropRect.y,
+      width: cropRect.width,
+      height: cropRect.height
     });
+
+    if (isRequestCancelled(requestId)) return;
 
     const answer = await askWithOllama([
       { role: "system", content: contextFlashcardPrompt },
@@ -2423,7 +2595,8 @@ async function runImageExplanation() {
         content: buildVisualFlashcardUserPrompt(),
         images: [capture.base64]
       }
-    ]);
+    ], { requestId });
+    if (isRequestCancelled(requestId)) return;
     const payload = normalizeContextFlashcards(safeJsonParse(answer, {}), "recorte visual", "recorte visual");
     const cards = payload.cards.length
       ? payload.cards
@@ -2448,6 +2621,14 @@ async function runImageExplanation() {
         source: "lesson-image"
       });
     }
+    await persistLessonFlashcards({
+      theme: payload.topic || state.currentLesson?.title || "recorte visual",
+      source: "lesson-image",
+      selection: "recorte visual",
+      title: `Que es esto? ${payload.topic ? `- ${payload.topic}` : ""}`.trim(),
+      subtitle: "Tarjetas generadas a partir del recorte visual.",
+      cards
+    });
     openFlashcards({
       source: "visual-help",
       title: `Que es esto? ${payload.topic ? `- ${payload.topic}` : ""}`.trim(),
@@ -2456,12 +2637,17 @@ async function runImageExplanation() {
       sessionId
     });
   } catch (error) {
+    if (error?.name === "AbortError" || isRequestCancelled(requestId)) {
+      return;
+    }
     openFlashcards({
       source: "visual-help",
       title: "No pude analizar el recorte",
       subtitle: "Intenta hacer un recorte un poco mas grande o mas claro.",
       cards: fallbackExplanationCards(`[Error] ${error.message}`, "Recorte visual").map((card) => ({ title: card.title, body: card.body }))
     });
+  } finally {
+    finishRequest(requestId);
   }
   render();
 }
@@ -2497,21 +2683,40 @@ async function handleSubmit(event) {
 
   const question = event.target.question.value.trim();
   const readiness = inferenceReadiness();
-  if (!question || state.isThinking || !readiness.ready) return;
+  if (!question || state.isThinking || state.loadingPanel.open || !readiness.ready) return;
 
+  const requestId = createLocalId("practice");
   event.target.reset();
-  state.chatMessages.push({ role: "user", text: question });
   state.isThinking = true;
+  openLoadingPanel({
+    title: "Generando respuesta",
+    detail: "Estoy clasificando tu pregunta y preparando las tarjetas o el problema guiado.",
+    cancelable: true,
+    requestId
+  });
   render();
 
   try {
-    await handleStudyQuestion(question);
+    await handleStudyQuestion(question, { requestId });
+    if (isRequestCancelled(requestId)) return;
     state.profile = addPracticeXp(state.profile, 1);
     await window.bridge.saveProfile(state.profile);
   } catch (error) {
-    state.chatMessages.push({ role: "bot", text: `[Error] ${error.message}` });
+    if (error?.name === "AbortError" || isRequestCancelled(requestId)) {
+      return;
+    }
+    openFlashcards({
+      source: "practice-error",
+      title: "No pude generar la interaccion",
+      subtitle: "Prueba reformulando la pregunta o vuelve a intentarlo.",
+      cards: [{
+        title: "No se pudo preparar el recorrido",
+        body: error.message || "Ocurrio un error inesperado al crear las tarjetas o el problema guiado."
+      }]
+    });
   } finally {
     state.isThinking = false;
+    finishRequest(requestId);
     render();
   }
 }
@@ -2519,6 +2724,9 @@ async function handleSubmit(event) {
 async function handleClick(event) {
   const button = event.target.closest("[data-action]");
   if (!button) {
+    if (state.loadingPanel.open) {
+      return;
+    }
     if (closeLessonMenus()) {
       syncLessonUi();
     }
@@ -2526,6 +2734,18 @@ async function handleClick(event) {
   }
 
   const action = button.dataset.action;
+
+  if (action === "cancel-loading" && state.loadingPanel.cancelable && state.loadingPanel.requestId) {
+    cancelledRequestIds.add(state.loadingPanel.requestId);
+    await window.bridge.cancelChat(state.loadingPanel.requestId);
+    closeLoadingPanel();
+    render();
+    return;
+  }
+
+  if (state.loadingPanel.open) {
+    return;
+  }
 
   if (action === "close-flashcards") {
     const shouldResumeExercise = state.practiceSession?.kind === "exercise"
@@ -2613,10 +2833,6 @@ async function handleClick(event) {
     state.currentLesson = null;
     state.stageIndex = 0;
     resetLessonAssistState();
-  }
-
-  if (action === "practice-mode") {
-    state.practiceMode = button.dataset.mode;
   }
 
   if (action === "quick-prompt") {
@@ -3004,7 +3220,7 @@ async function refreshOllamaModels(baseUrl) {
   }
 }
 
-async function askWithOllama(messages) {
+async function askWithOllama(messages, options = {}) {
   if (!state.settings.currentModel) {
     throw new Error("Activa un modelo local desde Configuracion LLM.");
   }
@@ -3012,7 +3228,10 @@ async function askWithOllama(messages) {
   return window.bridge.chat({
     baseUrl: state.settings.ollamaBaseUrl,
     model: state.settings.currentModel,
-    messages
+    messages,
+    requestId: options.requestId || "",
+    maxTokens: Number.isFinite(Number(options.maxTokens)) ? Number(options.maxTokens) : null,
+    temperature: Number.isFinite(Number(options.temperature)) ? Number(options.temperature) : null
   });
 }
 

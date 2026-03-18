@@ -12,7 +12,8 @@ export const defaultProfile = {
   activity: [],
   conceptProgress: [],
   tutorSessions: [],
-  struggleSignals: []
+  struggleSignals: [],
+  lessonFlashcards: []
 };
 
 const XP_PER_LEVEL = 40;
@@ -124,6 +125,65 @@ function mergeStruggleSignals(existing, incoming) {
   };
 }
 
+function normalizeFlashcardEntry(input = {}) {
+  const cards = Array.isArray(input.cards)
+    ? input.cards
+        .map((card) => ({
+          title: String(card?.title || "").trim(),
+          body: String(card?.body || "").trim()
+        }))
+        .filter((card) => card.title || card.body)
+    : [];
+  if (!cards.length) return null;
+
+  return {
+    id: String(input.id || "").trim() || normalizeTopicKey(`${input.title || "cards"}-${nowIso()}`),
+    source: String(input.source || "").trim() || "lesson-help",
+    selection: String(input.selection || "").trim(),
+    title: String(input.title || "").trim() || "Tarjetas guardadas",
+    subtitle: String(input.subtitle || "").trim(),
+    ts: input.ts || nowIso(),
+    cards
+  };
+}
+
+function normalizeLessonFlashcardGroup(input = {}) {
+  const unit = String(input.unit || "").trim();
+  const lessonTitle = String(input.lessonTitle || "").trim();
+  const theme = String(input.theme || input.topic || lessonTitle || unit).trim();
+  const key = normalizeTopicKey(input.key || `${unit}::${lessonTitle}::${theme}`);
+  if (!key) return null;
+
+  const entries = Array.isArray(input.entries)
+    ? input.entries
+        .map((entry) => normalizeFlashcardEntry(entry))
+        .filter(Boolean)
+    : [];
+
+  return {
+    key,
+    unit,
+    lessonTitle,
+    theme,
+    ts: input.ts || nowIso(),
+    updatedAt: input.updatedAt || input.ts || nowIso(),
+    entries
+  };
+}
+
+function mergeLessonFlashcardGroups(existing, incoming) {
+  return {
+    ...existing,
+    ...incoming,
+    unit: incoming.unit || existing.unit || "",
+    lessonTitle: incoming.lessonTitle || existing.lessonTitle || "",
+    theme: incoming.theme || existing.theme || "",
+    ts: existing.ts || incoming.ts || nowIso(),
+    updatedAt: incoming.updatedAt || nowIso(),
+    entries: [...(existing.entries || []), ...(incoming.entries || [])]
+  };
+}
+
 export function migrateProfile(input = {}) {
   const conceptProgress = Array.isArray(input.conceptProgress)
     ? input.conceptProgress
@@ -149,6 +209,11 @@ export function migrateProfile(input = {}) {
         .map((signal) => normalizeStruggleSignal(signal))
         .filter(Boolean)
     : [];
+  const lessonFlashcards = Array.isArray(input.lessonFlashcards)
+    ? input.lessonFlashcards
+        .map((group) => normalizeLessonFlashcardGroup(group))
+        .filter(Boolean)
+    : [];
 
   return {
     ...defaultProfile,
@@ -157,7 +222,8 @@ export function migrateProfile(input = {}) {
     activity: Array.isArray(input.activity) ? input.activity : [],
     conceptProgress,
     tutorSessions,
-    struggleSignals
+    struggleSignals,
+    lessonFlashcards
   };
 }
 
@@ -213,7 +279,8 @@ export function resetProgress(profile) {
     activity: [],
     conceptProgress: [],
     tutorSessions: [],
-    struggleSignals: []
+    struggleSignals: [],
+    lessonFlashcards: []
   });
 }
 
@@ -294,6 +361,39 @@ export function trackStruggleSignal(profile, payload) {
   });
 }
 
+export function lessonFlashcards(profile) {
+  return [...(migrateProfile(profile).lessonFlashcards || [])]
+    .sort((left, right) => String(right.updatedAt || right.ts || "").localeCompare(String(left.updatedAt || left.ts || "")));
+}
+
+export function trackLessonFlashcards(profile, payload) {
+  const entry = normalizeFlashcardEntry(payload);
+  const group = normalizeLessonFlashcardGroup({
+    unit: payload.unit,
+    lessonTitle: payload.lessonTitle,
+    theme: payload.theme,
+    entries: entry ? [entry] : []
+  });
+  if (!entry || !group) {
+    return migrateProfile(profile);
+  }
+
+  const current = lessonFlashcards(profile);
+  const index = current.findIndex((item) => item.key === group.key);
+  const nextGroups = [...current];
+
+  if (index >= 0) {
+    nextGroups[index] = mergeLessonFlashcardGroups(nextGroups[index], group);
+  } else {
+    nextGroups.push(group);
+  }
+
+  return migrateProfile({
+    ...profile,
+    lessonFlashcards: nextGroups
+  });
+}
+
 export function recentActivity(profile, limit = 6) {
   return [...(profile.activity || [])]
     .sort((left, right) => String(right.ts || "").localeCompare(String(left.ts || "")))
@@ -339,6 +439,7 @@ export function profileSummary(profile) {
     streakDays: streakDays(current),
     dailyGoalProgress: dailyGoalProgress(current),
     knownConcepts: knownConcepts(current).length,
-    struggleSignals: struggleSignals(current).length
+    struggleSignals: struggleSignals(current).length,
+    lessonFlashcards: lessonFlashcards(current).length
   };
 }
