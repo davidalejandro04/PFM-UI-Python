@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-04-datos-y-graficas-3-y-5",
+  "slug": "04-datos-y-graficas-3-y-5",
+  "title": "Datos y gráficas — 3.º y 5.º",
+  "metadata": {
+    "contentType": "data-literacy",
+    "coursework": "mathematics-primary",
+    "lineIndex": 4,
+    "unitNumber": 4,
+    "gradeBands": [
+      "3",
+      "5"
+    ],
+    "tags": [
+      "datos",
+      "graficas",
+      "tablas"
+    ]
+  },
+  "lessons": [
+    {
+      "id": "lesson-datos-y-graficas-3-y-5-01-tablas-y-pictogramas-3",
+      "order": 1,
+      "file": "./lessons/01-tablas-y-pictogramas-3.json"
+    },
+    {
+      "id": "lesson-datos-y-graficas-3-y-5-02-graficos-de-barras-y-conclusiones-5",
+      "order": 2,
+      "file": "./lessons/02-graficos-de-barras-y-conclusiones-5.json"
+    }
+  ]
+}

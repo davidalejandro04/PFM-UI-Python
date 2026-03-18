@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-05-medicion-y-estimacion-3-y-5",
+  "slug": "05-medicion-y-estimacion-3-y-5",
+  "title": "Medición y estimación — 3.º y 5.º",
+  "metadata": {
+    "contentType": "measurement",
+    "coursework": "mathematics-primary",
+    "lineIndex": 5,
+    "unitNumber": 5,
+    "gradeBands": [
+      "3",
+      "5"
+    ],
+    "tags": [
+      "medicion",
+      "estimacion",
+      "area",
+      "perimetro"
+    ]
+  },
+  "lessons": [
+    {
+      "id": "lesson-medicion-y-estimacion-3-y-5-01-unidades-y-estimaciones-3",
+      "order": 1,
+      "file": "./lessons/01-unidades-y-estimaciones-3.json"
+    },
+    {
+      "id": "lesson-medicion-y-estimacion-3-y-5-02-perimetro-y-area-basicos-5",
+      "order": 2,
+      "file": "./lessons/02-perimetro-y-area-basicos-5.json"
+    }
+  ]
+}

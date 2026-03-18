@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-06-geometria-1-triangulos",
+  "slug": "01-geometria-1-triangulos",
+  "title": "Geometría 1 — Triángulos",
+  "metadata": {
+    "contentType": "geometry",
+    "coursework": "mathematics-extension",
+    "lineIndex": 1,
+    "unitNumber": 1,
+    "gradeBands": [],
+    "tags": [
+      "geometria",
+      "triangulos",
+      "heron"
+    ]
+  },
+  "lessons": [
+    {
+      "id": "lesson-geometria-1-triangulos-01-tipos-de-triangulos",
+      "order": 1,
+      "file": "./lessons/01-tipos-de-triangulos.json"
+    },
+    {
+      "id": "lesson-geometria-1-triangulos-02-perimetro-y-area-de-triangulos",
+      "order": 2,
+      "file": "./lessons/02-perimetro-y-area-de-triangulos.json"
+    },
+    {
+      "id": "lesson-geometria-1-triangulos-03-triangulos-notables",
+      "order": 3,
+      "file": "./lessons/03-triangulos-notables.json"
+    }
+  ]
+}

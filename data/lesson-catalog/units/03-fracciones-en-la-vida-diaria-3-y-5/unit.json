@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-03-fracciones-en-la-vida-diaria-3-y-5",
+  "slug": "03-fracciones-en-la-vida-diaria-3-y-5",
+  "title": "Fracciones en la vida diaria — 3.º y 5.º",
+  "metadata": {
+    "contentType": "fraction-reasoning",
+    "coursework": "mathematics-primary",
+    "lineIndex": 3,
+    "unitNumber": 3,
+    "gradeBands": [
+      "3",
+      "5"
+    ],
+    "tags": [
+      "fracciones",
+      "decimales",
+      "porcentajes"
+    ]
+  },
+  "lessons": [
+    {
+      "id": "lesson-fracciones-en-la-vida-diaria-3-y-5-01-equivalencias-y-comparacion-de-fracciones-3",
+      "order": 1,
+      "file": "./lessons/01-equivalencias-y-comparacion-de-fracciones-3.json"
+    },
+    {
+      "id": "lesson-fracciones-en-la-vida-diaria-3-y-5-02-decimales-y-porcentajes-simples-5",
+      "order": 2,
+      "file": "./lessons/02-decimales-y-porcentajes-simples-5.json"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-02-relaciones-y-expresiones-5",
+  "slug": "02-relaciones-y-expresiones-5",
+  "title": "Relaciones y expresiones — 5.º",
+  "metadata": {
+    "contentType": "algebraic-thinking",
+    "coursework": "mathematics-primary",
+    "lineIndex": 2,
+    "unitNumber": 2,
+    "gradeBands": [
+      "5"
+    ],
+    "tags": [
+      "relaciones",
+      "expresiones",
+      "tablas"
+    ]
+  },
+  "lessons": [
+    {
+      "id": "lesson-relaciones-y-expresiones-5-01-igualdades-y-desigualdades-simples-5",
+      "order": 1,
+      "file": "./lessons/01-igualdades-y-desigualdades-simples-5.json"
+    },
+    {
+      "id": "lesson-relaciones-y-expresiones-5-02-patrones-y-tablas-5",
+      "order": 2,
+      "file": "./lessons/02-patrones-y-tablas-5.json"
+    }
+  ]
+}

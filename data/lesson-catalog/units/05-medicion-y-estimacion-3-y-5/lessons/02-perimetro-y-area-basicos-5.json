@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "lesson-medicion-y-estimacion-3-y-5-02-perimetro-y-area-basicos-5",
+  "slug": "02-perimetro-y-area-basicos-5",
+  "unitId": "unit-05-medicion-y-estimacion-3-y-5",
+  "order": 2,
+  "title": "Perímetro y área básicos (5.º)",
+  "description": "Aplicar conceptos geométricos para perímetros y áreas simples. (OP07)",
+  "metadata": {
+    "contentType": "lesson",
+    "coursework": "mathematics-primary",
+    "lineIndex": 5,
+    "lessonIndex": 2,
+    "gradeBands": [
+      "3",
+      "5"
+    ],
+    "sourceFormat": "legacy-lessons-json"
+  },
+  "formulas": [],
+  "assets": [],
+  "stages": [
+    {
+      "id": "stage-01",
+      "order": 1,
+      "title": "Perímetro vs área",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Perímetro vs área</title>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .example h4, .task h4 { margin-top: 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .step { margin:.3rem 0; }\n    code.k { background:#f7f7f7; padding:.15rem .35rem; border-radius:4px; }\n  </style>\n</head>\n<body>\n\n<h1>Perímetro y área</h1>\n<div><span class=\"badge\">Eje</span> Aplicación de conceptos geométricos</div>\n<p><strong>Perímetro</strong>: suma de lados. <strong>Área</strong>: superficie cubierta.</p>\n<div class=\"example\">\n  <h4>Ejemplo</h4>\n  <p>Rectángulo 6×3 → perímetro 2(6+3)=<strong>18</strong>; área 6×3=<strong>18</strong>.</p>\n</div>\n\n</body>\n</html>",
+      "formulas": [],
+      "assets": []
+    },
+    {
+      "id": "stage-02",
+      "order": 2,
+      "title": "Ejemplos resueltos",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Ejemplos resueltos</title>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .example h4, .task h4 { margin-top: 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .step { margin:.3rem 0; }\n    code.k { background:#f7f7f7; padding:.15rem .35rem; border-radius:4px; }\n  </style>\n</head>\n<body>\n\n<h2>Ejemplos</h2>\n<div class=\"example\">\n  <p>Cuadrado de lado 5: perímetro 20; área 25.</p>\n</div>\n\n</body>\n</html>",
+      "formulas": [],
+      "assets": []
+    },
+    {
+      "id": "stage-03",
+      "order": 3,
+      "title": "Práctica guiada",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Práctica guiada</title>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .example h4, .task h4 { margin-top: 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .step { margin:.3rem 0; }\n    code.k { background:#f7f7f7; padding:.15rem .35rem; border-radius:4px; }\n  </style>\n</head>\n<body>\n\n<h2>Práctica</h2>\n<ol>\n  <li>Perímetro de un triángulo con lados 4, 5 y 7.</li>\n  <li>Área de un rectángulo 8×2.</li>\n</ol>\n<p class=\"note\">Incluye unidades en la respuesta.</p>\n\n</body>\n</html>",
+      "formulas": [],
+      "assets": []
+    }
+  ]
+}

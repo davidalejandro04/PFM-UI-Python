@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "lesson-medicion-y-estimacion-3-y-5-01-unidades-y-estimaciones-3",
+  "slug": "01-unidades-y-estimaciones-3",
+  "unitId": "unit-05-medicion-y-estimacion-3-y-5",
+  "order": 1,
+  "title": "Unidades y estimaciones (3.º)",
+  "description": "Seleccionar unidades apropiadas y estimar medidas. (OP08)",
+  "metadata": {
+    "contentType": "lesson",
+    "coursework": "mathematics-primary",
+    "lineIndex": 5,
+    "lessonIndex": 1,
+    "gradeBands": [
+      "3",
+      "5"
+    ],
+    "sourceFormat": "legacy-lessons-json"
+  },
+  "formulas": [],
+  "assets": [],
+  "stages": [
+    {
+      "id": "stage-01",
+      "order": 1,
+      "title": "Elegir unidades",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Elegir unidades</title>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .example h4, .task h4 { margin-top: 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .step { margin:.3rem 0; }\n    code.k { background:#f7f7f7; padding:.15rem .35rem; border-radius:4px; }\n  </style>\n</head>\n<body>\n\n<h1>Medición y estimación</h1>\n<div><span class=\"badge\">Eje</span> Medición y estimación usando unidades estándar</div>\n<p>Elige la unidad según el objeto: cm para lápices, m para cuerdas, L para agua.</p>\n<div class=\"example\">\n  <h4>Ejemplo</h4>\n  <p>¿Litros o mililitros para un vaso? <strong>mL</strong>.</p>\n</div>\n\n</body>\n</html>",
+      "formulas": [],
+      "assets": []
+    },
+    {
+      "id": "stage-02",
+      "order": 2,
+      "title": "Ejemplos resueltos",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Ejemplos resueltos</title>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .example h4, .task h4 { margin-top: 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .step { margin:.3rem 0; }\n    code.k { background:#f7f7f7; padding:.15rem .35rem; border-radius:4px; }\n  </style>\n</head>\n<body>\n\n<h2>Estimaciones</h2>\n<div class=\"example\">\n  <p>Una puerta mide ≈ 2 m; una goma de borrar ≈ 5 cm.</p>\n</div>\n\n</body>\n</html>",
+      "formulas": [],
+      "assets": []
+    },
+    {
+      "id": "stage-03",
+      "order": 3,
+      "title": "Práctica guiada",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Práctica guiada</title>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .example h4, .task h4 { margin-top: 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .step { margin:.3rem 0; }\n    code.k { background:#f7f7f7; padding:.15rem .35rem; border-radius:4px; }\n  </style>\n</head>\n<body>\n\n<h2>Práctica</h2>\n<ol>\n  <li>Selecciona unidad: masa de una mochila (¿g o kg?).</li>\n  <li>Estima la longitud de tu cuaderno.</li>\n</ol>\n<p class=\"note\">Justifica tu elección.</p>\n\n</body>\n</html>",
+      "formulas": [],
+      "assets": []
+    }
+  ]
+}

@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 1,
+  "id": "lesson-geometria-1-triangulos-03-triangulos-notables",
+  "slug": "03-triangulos-notables",
+  "unitId": "unit-06-geometria-1-triangulos",
+  "order": 3,
+  "title": "Triángulos notables",
+  "description": "45-45-90 y 30-60-90, relaciones rápidas.",
+  "metadata": {
+    "contentType": "lesson",
+    "coursework": "mathematics-extension",
+    "lineIndex": 1,
+    "lessonIndex": 3,
+    "gradeBands": [],
+    "sourceFormat": "legacy-lessons-json"
+  },
+  "formulas": [
+    {
+      "latex": "c=x\\sqrt{2}",
+      "displayMode": true,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "c=2x,\\quad b=x\\sqrt{3}",
+      "displayMode": true,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "x",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "x\\sqrt{2}",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "30^\\circ",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "2x",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "x\\sqrt{3}",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "x=6",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "c=6\\sqrt{2}",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "x=4",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "c=8",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "4\\sqrt{3}",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "kind": "stylesheet",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css",
+      "stageIds": [
+        "stage-01",
+        "stage-02"
+      ]
+    },
+    {
+      "kind": "script",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js",
+      "stageIds": [
+        "stage-01",
+        "stage-02"
+      ]
+    },
+    {
+      "kind": "script",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js",
+      "stageIds": [
+        "stage-01",
+        "stage-02"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "stage-01",
+      "order": 1,
+      "title": "Triángulos notables",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Triángulos notables</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.6; padding: 18px 16px 60px; }\n    h1,h2,h3 { margin: 0.2em 0 0.4em; }\n    .pill { display: inline-block; padding: 0.2em 0.6em; border-radius: 999px; background: #eee; font-size: 0.9em; margin-right: 6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .ex { background: #fff7ed; border-left: 4px solid #ffb86b; padding: 10px 12px; margin: 14px 0; }\n    .note { background: #f6f8fa; border-left: 4px solid #c9d1d9; padding: 10px 12px; margin: 14px 0; }\n    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }\n    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }\n    svg { max-width: 100%; height: auto; display:block; margin: 8px auto; }\n    .q { margin: 8px 0; }\n    code.katex-display { font-size: 1.05em; }\n  </style>\n</head>\n<body>\n\n<h1>Triángulos notables</h1>\n<div class=\"grid\">\n  <div class=\"card\">\n    <h3>45-45-90</h3>\n    <p>Isósceles rectángulo: si los catetos valen $x$, la hipotenusa vale $x\\sqrt{2}$.</p>\n    <p class=\"tip\">$$c=x\\sqrt{2}$$</p>\n  </div>\n  <div class=\"card\">\n    <h3>30-60-90</h3>\n    <p>Si el lado opuesto a $30^\\circ$ vale $x$, entonces la hipotenusa es $2x$ y el otro cateto es $x\\sqrt{3}$.</p>\n    <p class=\"tip\">$$c=2x,\\quad b=x\\sqrt{3}$$</p>\n  </div>\n</div>\n\n<script>\ndocument.addEventListener(\"DOMContentLoaded\", function() {\n  renderMathInElement(document.body, {\n    delimiters: [\n      {left: \"$$\", right: \"$$\", display: true},\n      {left: \"$\", right: \"$\", display: false}\n    ]\n  });\n});\n</script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "c=x\\sqrt{2}",
+          "displayMode": true
+        },
+        {
+          "latex": "c=2x,\\quad b=x\\sqrt{3}",
+          "displayMode": true
+        },
+        {
+          "latex": "x",
+          "displayMode": false
+        },
+        {
+          "latex": "x\\sqrt{2}",
+          "displayMode": false
+        },
+        {
+          "latex": "30^\\circ",
+          "displayMode": false
+        },
+        {
+          "latex": "2x",
+          "displayMode": false
+        },
+        {
+          "latex": "x\\sqrt{3}",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    },
+    {
+      "id": "stage-02",
+      "order": 2,
+      "title": "Notables — ejercicios",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Notables — ejercicios</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.6; padding: 18px 16px 60px; }\n    h1,h2,h3 { margin: 0.2em 0 0.4em; }\n    .pill { display: inline-block; padding: 0.2em 0.6em; border-radius: 999px; background: #eee; font-size: 0.9em; margin-right: 6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .ex { background: #fff7ed; border-left: 4px solid #ffb86b; padding: 10px 12px; margin: 14px 0; }\n    .note { background: #f6f8fa; border-left: 4px solid #c9d1d9; padding: 10px 12px; margin: 14px 0; }\n    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }\n    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }\n    svg { max-width: 100%; height: auto; display:block; margin: 8px auto; }\n    .q { margin: 8px 0; }\n    code.katex-display { font-size: 1.05em; }\n  </style>\n</head>\n<body>\n\n                    <h1>Aplicaciones rápidas</h1>\n                    <div class='ex'><strong>1)</strong> En un 45‑45‑90 con cateto $x=6$, hipotenusa $c=6\\sqrt{2}$.</div>\n                    <div class='ex'><strong>2)</strong> En un 30‑60‑90 con $x=4$, $c=8$ y el otro cateto $4\\sqrt{3}$.</div>\n                \n<script>\ndocument.addEventListener(\"DOMContentLoaded\", function() {\n  renderMathInElement(document.body, {\n    delimiters: [\n      {left: \"$$\", right: \"$$\", display: true},\n      {left: \"$\", right: \"$\", display: false}\n    ]\n  });\n});\n</script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "x=6",
+          "displayMode": false
+        },
+        {
+          "latex": "c=6\\sqrt{2}",
+          "displayMode": false
+        },
+        {
+          "latex": "x=4",
+          "displayMode": false
+        },
+        {
+          "latex": "c=8",
+          "displayMode": false
+        },
+        {
+          "latex": "4\\sqrt{3}",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    }
+  ]
+}

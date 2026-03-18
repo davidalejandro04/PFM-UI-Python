@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "title": "TutorMate lesson catalog",
+  "validation": {
+    "uniqueUnitSlotKey": [
+      "metadata.coursework",
+      "metadata.lineIndex"
+    ],
+    "uniqueLessonOrderWithinUnit": true
+  },
+  "units": [
+    {
+      "id": "unit-01-numeros-y-patrones-3",
+      "order": 1,
+      "file": "./units/01-numeros-y-patrones-3/unit.json"
+    },
+    {
+      "id": "unit-02-relaciones-y-expresiones-5",
+      "order": 2,
+      "file": "./units/02-relaciones-y-expresiones-5/unit.json"
+    },
+    {
+      "id": "unit-03-fracciones-en-la-vida-diaria-3-y-5",
+      "order": 3,
+      "file": "./units/03-fracciones-en-la-vida-diaria-3-y-5/unit.json"
+    },
+    {
+      "id": "unit-04-datos-y-graficas-3-y-5",
+      "order": 4,
+      "file": "./units/04-datos-y-graficas-3-y-5/unit.json"
+    },
+    {
+      "id": "unit-05-medicion-y-estimacion-3-y-5",
+      "order": 5,
+      "file": "./units/05-medicion-y-estimacion-3-y-5/unit.json"
+    },
+    {
+      "id": "unit-06-geometria-1-triangulos",
+      "order": 6,
+      "file": "./units/01-geometria-1-triangulos/unit.json"
+    }
+  ]
+}

@@ -1,0 +1,505 @@
+{
+  "schemaVersion": 1,
+  "id": "lesson-geometria-1-triangulos-01-tipos-de-triangulos",
+  "slug": "01-tipos-de-triangulos",
+  "unitId": "unit-06-geometria-1-triangulos",
+  "order": 1,
+  "title": "Tipos de triángulos",
+  "description": "Clasificación por lados y por ángulos, con ejemplos.",
+  "metadata": {
+    "contentType": "lesson",
+    "coursework": "mathematics-extension",
+    "lineIndex": 1,
+    "lessonIndex": 1,
+    "gradeBands": [],
+    "sourceFormat": "legacy-lessons-json"
+  },
+  "formulas": [
+    {
+      "latex": "a=b=c",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "60^\\circ",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "a=b\\neq c",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "a\\neq b\\neq c",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "5\\,\\text{cm}",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "7\\,\\text{cm}",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "\\alpha + \\beta + \\gamma = 180^\\circ.",
+      "displayMode": true,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "a^2 + b^2 = c^2",
+      "displayMode": true,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "&lt;90^\\circ",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "90^\\circ",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "&gt;90^\\circ",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "P = a + b + c",
+      "displayMode": true,
+      "stageIds": [
+        "stage-03"
+      ]
+    },
+    {
+      "latex": "A = \\frac{b \\cdot h}{2}",
+      "displayMode": true,
+      "stageIds": [
+        "stage-03"
+      ]
+    },
+    {
+      "latex": "A = \\sqrt{ s(s-a)(s-b)(s-c) }",
+      "displayMode": true,
+      "stageIds": [
+        "stage-03"
+      ]
+    },
+    {
+      "latex": "A=\\sqrt{9\\cdot4\\cdot3\\cdot2}=\\sqrt{216}\\approx 14{,}70\\,\\text{u}^2.",
+      "displayMode": true,
+      "stageIds": [
+        "stage-03"
+      ]
+    },
+    {
+      "latex": "h",
+      "displayMode": false,
+      "stageIds": [
+        "stage-03"
+      ]
+    },
+    {
+      "latex": "b",
+      "displayMode": false,
+      "stageIds": [
+        "stage-03"
+      ]
+    },
+    {
+      "latex": "s=\\tfrac{a+b+c}{2}",
+      "displayMode": false,
+      "stageIds": [
+        "stage-03"
+      ]
+    },
+    {
+      "latex": "a=5, b=6, c=7",
+      "displayMode": false,
+      "stageIds": [
+        "stage-03"
+      ]
+    },
+    {
+      "latex": "s=9",
+      "displayMode": false,
+      "stageIds": [
+        "stage-03"
+      ]
+    },
+    {
+      "latex": "3^2+4^2=5^2.",
+      "displayMode": true,
+      "stageIds": [
+        "stage-04"
+      ]
+    },
+    {
+      "latex": "s=\\tfrac{4+7+9}{2}=10.",
+      "displayMode": true,
+      "stageIds": [
+        "stage-04"
+      ]
+    },
+    {
+      "latex": "6,6,6",
+      "displayMode": false,
+      "stageIds": [
+        "stage-04"
+      ]
+    },
+    {
+      "latex": "3",
+      "displayMode": false,
+      "stageIds": [
+        "stage-04"
+      ]
+    },
+    {
+      "latex": "4",
+      "displayMode": false,
+      "stageIds": [
+        "stage-04"
+      ]
+    },
+    {
+      "latex": "5",
+      "displayMode": false,
+      "stageIds": [
+        "stage-04"
+      ]
+    },
+    {
+      "latex": "a=4, b=7, c=9",
+      "displayMode": false,
+      "stageIds": [
+        "stage-04"
+      ]
+    },
+    {
+      "latex": "30-60-90",
+      "displayMode": false,
+      "stageIds": [
+        "stage-04"
+      ]
+    },
+    {
+      "latex": "30^\\circ",
+      "displayMode": false,
+      "stageIds": [
+        "stage-04"
+      ]
+    },
+    {
+      "latex": "10",
+      "displayMode": false,
+      "stageIds": [
+        "stage-04"
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "kind": "stylesheet",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css",
+      "stageIds": [
+        "stage-01",
+        "stage-02",
+        "stage-03",
+        "stage-04"
+      ]
+    },
+    {
+      "kind": "script",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js",
+      "stageIds": [
+        "stage-01",
+        "stage-02",
+        "stage-03",
+        "stage-04"
+      ]
+    },
+    {
+      "kind": "script",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js",
+      "stageIds": [
+        "stage-01",
+        "stage-02",
+        "stage-03",
+        "stage-04"
+      ]
+    },
+    {
+      "kind": "svg",
+      "source": "inline",
+      "target": "inline-svg",
+      "stageIds": [
+        "stage-01",
+        "stage-02"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "stage-01",
+      "order": 1,
+      "title": "Triángulos por lados",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Triángulos por lados</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.6; padding: 18px 16px 60px; }\n    h1,h2,h3 { margin: 0.2em 0 0.4em; }\n    .pill { display: inline-block; padding: 0.2em 0.6em; border-radius: 999px; background: #eee; font-size: 0.9em; margin-right: 6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .ex { background: #fff7ed; border-left: 4px solid #ffb86b; padding: 10px 12px; margin: 14px 0; }\n    .note { background: #f6f8fa; border-left: 4px solid #c9d1d9; padding: 10px 12px; margin: 14px 0; }\n    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }\n    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }\n    svg { max-width: 100%; height: auto; display:block; margin: 8px auto; }\n    .q { margin: 8px 0; }\n    code.katex-display { font-size: 1.05em; }\n  </style>\n</head>\n<body>\n\n<h1>Tipos de triángulos por <em>lados</em></h1>\n<p class=\"pill\">Objetivo: reconocer ecuaciones y rasgos</p>\n<div class=\"grid\">\n  <div class=\"card\">\n    <h3>Equilátero</h3>\n    <p>Tiene los tres lados iguales: $a=b=c$.</p>\n    <div class=\"note\">Todos sus ángulos miden $60^\\circ$.</div>\n    \n<svg viewBox=\"0 0 240 170\" xmlns=\"http://www.w3.org/2000/svg\" aria-label=\"ΔABC\">\n  <polygon points=\"40,150 130,20 220,150\" fill=\"none\" stroke=\"#4f46e5\" stroke-width=\"3\" />\n  <text x=\"18\" y=\"160\" font-size=\"14\" fill=\"#374151\">A</text>\n  <text x=\"118\" y=\"18\" font-size=\"14\" fill=\"#374151\">B</text>\n  <text x=\"220\" y=\"160\" font-size=\"14\" fill=\"#374151\">C</text>\n</svg>\n\n  </div>\n  <div class=\"card\">\n    <h3>Isósceles</h3>\n    <p>Tiene dos lados iguales: por ejemplo $a=b\\neq c$.</p>\n    <div class=\"note\">Los ángulos de la base son iguales.</div>\n    \n<svg viewBox=\"0 0 240 170\" xmlns=\"http://www.w3.org/2000/svg\" aria-label=\"ΔABC\">\n  <polygon points=\"20,140 120,20 220,140\" fill=\"none\" stroke=\"#0ea5e9\" stroke-width=\"3\" />\n  <text x=\"18\" y=\"160\" font-size=\"14\" fill=\"#374151\">A</text>\n  <text x=\"118\" y=\"18\" font-size=\"14\" fill=\"#374151\">B</text>\n  <text x=\"220\" y=\"160\" font-size=\"14\" fill=\"#374151\">C</text>\n</svg>\n\n  </div>\n  <div class=\"card\">\n    <h3>Escaleno</h3>\n    <p>Tiene los tres lados distintos: $a\\neq b\\neq c$.</p>\n    <div class=\"note\">También sus tres ángulos son distintos.</div>\n    \n<svg viewBox=\"0 0 240 170\" xmlns=\"http://www.w3.org/2000/svg\" aria-label=\"ΔABC\">\n  <polygon points=\"20,140 160,110 220,140\" fill=\"none\" stroke=\"#10b981\" stroke-width=\"3\" />\n  <text x=\"18\" y=\"160\" font-size=\"14\" fill=\"#374151\">A</text>\n  <text x=\"118\" y=\"18\" font-size=\"14\" fill=\"#374151\">B</text>\n  <text x=\"220\" y=\"160\" font-size=\"14\" fill=\"#374151\">C</text>\n</svg>\n\n  </div>\n</div>\n<div class=\"ex\">\n  <strong>Ejemplo rápido:</strong> Si un triángulo tiene lados $5\\,\\text{cm}$, $5\\,\\text{cm}$ y $7\\,\\text{cm}$, ¿qué tipo es?<br>\n  <em>Respuesta:</em> Isósceles (dos lados iguales).\n</div>\n\n<script>\ndocument.addEventListener(\"DOMContentLoaded\", function() {\n  renderMathInElement(document.body, {\n    delimiters: [\n      {left: \"$$\", right: \"$$\", display: true},\n      {left: \"$\", right: \"$\", display: false}\n    ]\n  });\n});\n</script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "a=b=c",
+          "displayMode": false
+        },
+        {
+          "latex": "60^\\circ",
+          "displayMode": false
+        },
+        {
+          "latex": "a=b\\neq c",
+          "displayMode": false
+        },
+        {
+          "latex": "a\\neq b\\neq c",
+          "displayMode": false
+        },
+        {
+          "latex": "5\\,\\text{cm}",
+          "displayMode": false
+        },
+        {
+          "latex": "7\\,\\text{cm}",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        },
+        {
+          "kind": "svg",
+          "source": "inline",
+          "target": "inline-svg"
+        }
+      ]
+    },
+    {
+      "id": "stage-02",
+      "order": 2,
+      "title": "Triángulos por ángulos",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Triángulos por ángulos</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.6; padding: 18px 16px 60px; }\n    h1,h2,h3 { margin: 0.2em 0 0.4em; }\n    .pill { display: inline-block; padding: 0.2em 0.6em; border-radius: 999px; background: #eee; font-size: 0.9em; margin-right: 6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .ex { background: #fff7ed; border-left: 4px solid #ffb86b; padding: 10px 12px; margin: 14px 0; }\n    .note { background: #f6f8fa; border-left: 4px solid #c9d1d9; padding: 10px 12px; margin: 14px 0; }\n    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }\n    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }\n    svg { max-width: 100%; height: auto; display:block; margin: 8px auto; }\n    .q { margin: 8px 0; }\n    code.katex-display { font-size: 1.05em; }\n  </style>\n</head>\n<body>\n\n<h1>Tipos de triángulos por <em>ángulos</em></h1>\n<p>En todo triángulo la suma de ángulos interiores es $$\\alpha + \\beta + \\gamma = 180^\\circ.$$</p>\n<div class=\"grid\">\n  <div class=\"card\">\n    <h3>Acutángulo</h3>\n    <p>Todos sus ángulos son agudos ($&lt;90^\\circ$).</p>\n    \n<svg viewBox=\"0 0 240 170\" xmlns=\"http://www.w3.org/2000/svg\" aria-label=\"ΔABC\">\n  <polygon points=\"40,150 130,20 220,150\" fill=\"none\" stroke=\"#16a34a\" stroke-width=\"3\" />\n  <text x=\"18\" y=\"160\" font-size=\"14\" fill=\"#374151\">A</text>\n  <text x=\"118\" y=\"18\" font-size=\"14\" fill=\"#374151\">B</text>\n  <text x=\"220\" y=\"160\" font-size=\"14\" fill=\"#374151\">C</text>\n</svg>\n\n  </div>\n  <div class=\"card\">\n    <h3>Rectángulo</h3>\n    <p>Tiene un ángulo recto ($90^\\circ$). Se cumple el teorema de Pitágoras:</p>\n    <p class=\"tip\">$$a^2 + b^2 = c^2$$</p>\n    \n<svg viewBox=\"0 0 240 170\" xmlns=\"http://www.w3.org/2000/svg\" aria-label=\"ΔABC\">\n  <polygon points=\"20,140 20,20 220,140\" fill=\"none\" stroke=\"#ef4444\" stroke-width=\"3\" />\n  <text x=\"18\" y=\"160\" font-size=\"14\" fill=\"#374151\">A</text>\n  <text x=\"118\" y=\"18\" font-size=\"14\" fill=\"#374151\">B</text>\n  <text x=\"220\" y=\"160\" font-size=\"14\" fill=\"#374151\">C</text>\n</svg>\n\n  </div>\n  <div class=\"card\">\n    <h3>Obtusángulo</h3>\n    <p>Tiene un ángulo obtuso ($&gt;90^\\circ$).</p>\n    \n<svg viewBox=\"0 0 240 170\" xmlns=\"http://www.w3.org/2000/svg\" aria-label=\"ΔABC\">\n  <polygon points=\"20,140 160,110 220,140\" fill=\"none\" stroke=\"#fb923c\" stroke-width=\"3\" />\n  <text x=\"18\" y=\"160\" font-size=\"14\" fill=\"#374151\">A</text>\n  <text x=\"118\" y=\"18\" font-size=\"14\" fill=\"#374151\">B</text>\n  <text x=\"220\" y=\"160\" font-size=\"14\" fill=\"#374151\">C</text>\n</svg>\n\n  </div>\n</div>\n\n<script>\ndocument.addEventListener(\"DOMContentLoaded\", function() {\n  renderMathInElement(document.body, {\n    delimiters: [\n      {left: \"$$\", right: \"$$\", display: true},\n      {left: \"$\", right: \"$\", display: false}\n    ]\n  });\n});\n</script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "\\alpha + \\beta + \\gamma = 180^\\circ.",
+          "displayMode": true
+        },
+        {
+          "latex": "a^2 + b^2 = c^2",
+          "displayMode": true
+        },
+        {
+          "latex": "&lt;90^\\circ",
+          "displayMode": false
+        },
+        {
+          "latex": "90^\\circ",
+          "displayMode": false
+        },
+        {
+          "latex": "&gt;90^\\circ",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        },
+        {
+          "kind": "svg",
+          "source": "inline",
+          "target": "inline-svg"
+        }
+      ]
+    },
+    {
+      "id": "stage-03",
+      "order": 3,
+      "title": "Perímetro y área",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Perímetro y área</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.6; padding: 18px 16px 60px; }\n    h1,h2,h3 { margin: 0.2em 0 0.4em; }\n    .pill { display: inline-block; padding: 0.2em 0.6em; border-radius: 999px; background: #eee; font-size: 0.9em; margin-right: 6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .ex { background: #fff7ed; border-left: 4px solid #ffb86b; padding: 10px 12px; margin: 14px 0; }\n    .note { background: #f6f8fa; border-left: 4px solid #c9d1d9; padding: 10px 12px; margin: 14px 0; }\n    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }\n    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }\n    svg { max-width: 100%; height: auto; display:block; margin: 8px auto; }\n    .q { margin: 8px 0; }\n    code.katex-display { font-size: 1.05em; }\n  </style>\n</head>\n<body>\n\n<h1>Perímetro y área</h1>\n<p><strong>Perímetro</strong>: la suma de sus lados.</p>\n<p class=\"tip\">$$P = a + b + c$$</p>\n<p><strong>Área (base y altura)</strong>: si la altura $h$ cae sobre la base $b$:</p>\n<p class=\"tip\">$$A = \\frac{b \\cdot h}{2}$$</p>\n<p><strong>Fórmula de Herón</strong>: si conoces los tres lados, con $s=\\tfrac{a+b+c}{2}$ (semiperímetro):</p>\n<p class=\"tip\">$$A = \\sqrt{ s(s-a)(s-b)(s-c) }$$</p>\n<div class=\"ex\"><strong>Ejemplo:</strong> $a=5, b=6, c=7$. Entonces $s=9$ y \n$$A=\\sqrt{9\\cdot4\\cdot3\\cdot2}=\\sqrt{216}\\approx 14{,}70\\,\\text{u}^2.$$\n</div>\n\n<script>\ndocument.addEventListener(\"DOMContentLoaded\", function() {\n  renderMathInElement(document.body, {\n    delimiters: [\n      {left: \"$$\", right: \"$$\", display: true},\n      {left: \"$\", right: \"$\", display: false}\n    ]\n  });\n});\n</script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "P = a + b + c",
+          "displayMode": true
+        },
+        {
+          "latex": "A = \\frac{b \\cdot h}{2}",
+          "displayMode": true
+        },
+        {
+          "latex": "A = \\sqrt{ s(s-a)(s-b)(s-c) }",
+          "displayMode": true
+        },
+        {
+          "latex": "A=\\sqrt{9\\cdot4\\cdot3\\cdot2}=\\sqrt{216}\\approx 14{,}70\\,\\text{u}^2.",
+          "displayMode": true
+        },
+        {
+          "latex": "h",
+          "displayMode": false
+        },
+        {
+          "latex": "b",
+          "displayMode": false
+        },
+        {
+          "latex": "s=\\tfrac{a+b+c}{2}",
+          "displayMode": false
+        },
+        {
+          "latex": "a=5, b=6, c=7",
+          "displayMode": false
+        },
+        {
+          "latex": "s=9",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    },
+    {
+      "id": "stage-04",
+      "order": 4,
+      "title": "Quiz triángulos",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Quiz triángulos</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.6; padding: 18px 16px 60px; }\n    h1,h2,h3 { margin: 0.2em 0 0.4em; }\n    .pill { display: inline-block; padding: 0.2em 0.6em; border-radius: 999px; background: #eee; font-size: 0.9em; margin-right: 6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .ex { background: #fff7ed; border-left: 4px solid #ffb86b; padding: 10px 12px; margin: 14px 0; }\n    .note { background: #f6f8fa; border-left: 4px solid #c9d1d9; padding: 10px 12px; margin: 14px 0; }\n    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }\n    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }\n    svg { max-width: 100%; height: auto; display:block; margin: 8px auto; }\n    .q { margin: 8px 0; }\n    code.katex-display { font-size: 1.05em; }\n  </style>\n</head>\n<body>\n\n<h1>Mini‑quiz de repaso</h1>\n<ol>\n  <li class=\"q\">Un triángulo con lados $6,6,6$ es… <em>(marca la correcta)</em><br>\n    <label><input type=\"checkbox\"> Isósceles</label><br>\n    <label><input type=\"checkbox\"> Escaleno</label><br>\n    <label><input type=\"checkbox\"> Equilátero ✅</label>\n  </li>\n  <li class=\"q\">En un triángulo rectángulo con catetos $3$ y $4$, la hipotenusa es $5$ porque $$3^2+4^2=5^2.$$</li>\n  <li class=\"q\">Si $a=4, b=7, c=9$, el semiperímetro es $$s=\\tfrac{4+7+9}{2}=10.$$</li>\n  <li class=\"q\">En el triángulo $30-60-90$, si el lado opuesto a $30^\\circ$ vale $5$, entonces la hipotenusa vale $10$.</li>\n</ol>\n<div class=\"note\"><strong>Tip:</strong> repasa las fórmulas clave y vuelve con el botón “←”.</div>\n\n<script>\ndocument.addEventListener(\"DOMContentLoaded\", function() {\n  renderMathInElement(document.body, {\n    delimiters: [\n      {left: \"$$\", right: \"$$\", display: true},\n      {left: \"$\", right: \"$\", display: false}\n    ]\n  });\n});\n</script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "3^2+4^2=5^2.",
+          "displayMode": true
+        },
+        {
+          "latex": "s=\\tfrac{4+7+9}{2}=10.",
+          "displayMode": true
+        },
+        {
+          "latex": "6,6,6",
+          "displayMode": false
+        },
+        {
+          "latex": "3",
+          "displayMode": false
+        },
+        {
+          "latex": "4",
+          "displayMode": false
+        },
+        {
+          "latex": "5",
+          "displayMode": false
+        },
+        {
+          "latex": "a=4, b=7, c=9",
+          "displayMode": false
+        },
+        {
+          "latex": "30-60-90",
+          "displayMode": false
+        },
+        {
+          "latex": "30^\\circ",
+          "displayMode": false
+        },
+        {
+          "latex": "10",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    }
+  ]
+}

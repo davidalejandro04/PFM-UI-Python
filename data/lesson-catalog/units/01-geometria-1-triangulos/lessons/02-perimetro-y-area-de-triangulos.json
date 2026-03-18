@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "id": "lesson-geometria-1-triangulos-02-perimetro-y-area-de-triangulos",
+  "slug": "02-perimetro-y-area-de-triangulos",
+  "unitId": "unit-06-geometria-1-triangulos",
+  "order": 2,
+  "title": "Perímetro y área de triángulos",
+  "description": "Cómo calcular P y A con base‑altura y Herón.",
+  "metadata": {
+    "contentType": "lesson",
+    "coursework": "mathematics-extension",
+    "lineIndex": 1,
+    "lessonIndex": 2,
+    "gradeBands": [],
+    "sourceFormat": "legacy-lessons-json"
+  },
+  "formulas": [
+    {
+      "latex": "P = a + b + c",
+      "displayMode": true,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "A = \\frac{b \\cdot h}{2}",
+      "displayMode": true,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "A = \\sqrt{ s(s-a)(s-b)(s-c) }",
+      "displayMode": true,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "A=\\sqrt{9\\cdot4\\cdot3\\cdot2}=\\sqrt{216}\\approx 14{,}70\\,\\text{u}^2.",
+      "displayMode": true,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "h",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "b",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "s=\\tfrac{a+b+c}{2}",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "a=5, b=6, c=7",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "s=9",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "A=\\tfrac{8\\cdot5}{2}=20\\,\\text{u}^2.",
+      "displayMode": true,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "A=\\sqrt{14\\cdot7\\cdot5\\cdot2}=\\sqrt{980}\\approx 31{,}30\\,\\text{u}^2.",
+      "displayMode": true,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "b=8",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "h=5",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "7,9,12",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "s=14",
+      "displayMode": false,
+      "stageIds": [
+        "stage-02"
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "kind": "stylesheet",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css",
+      "stageIds": [
+        "stage-01",
+        "stage-02"
+      ]
+    },
+    {
+      "kind": "script",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js",
+      "stageIds": [
+        "stage-01",
+        "stage-02"
+      ]
+    },
+    {
+      "kind": "script",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js",
+      "stageIds": [
+        "stage-01",
+        "stage-02"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "stage-01",
+      "order": 1,
+      "title": "Perímetro y área",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Perímetro y área</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.6; padding: 18px 16px 60px; }\n    h1,h2,h3 { margin: 0.2em 0 0.4em; }\n    .pill { display: inline-block; padding: 0.2em 0.6em; border-radius: 999px; background: #eee; font-size: 0.9em; margin-right: 6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .ex { background: #fff7ed; border-left: 4px solid #ffb86b; padding: 10px 12px; margin: 14px 0; }\n    .note { background: #f6f8fa; border-left: 4px solid #c9d1d9; padding: 10px 12px; margin: 14px 0; }\n    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }\n    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }\n    svg { max-width: 100%; height: auto; display:block; margin: 8px auto; }\n    .q { margin: 8px 0; }\n    code.katex-display { font-size: 1.05em; }\n  </style>\n</head>\n<body>\n\n<h1>Perímetro y área</h1>\n<p><strong>Perímetro</strong>: la suma de sus lados.</p>\n<p class=\"tip\">$$P = a + b + c$$</p>\n<p><strong>Área (base y altura)</strong>: si la altura $h$ cae sobre la base $b$:</p>\n<p class=\"tip\">$$A = \\frac{b \\cdot h}{2}$$</p>\n<p><strong>Fórmula de Herón</strong>: si conoces los tres lados, con $s=\\tfrac{a+b+c}{2}$ (semiperímetro):</p>\n<p class=\"tip\">$$A = \\sqrt{ s(s-a)(s-b)(s-c) }$$</p>\n<div class=\"ex\"><strong>Ejemplo:</strong> $a=5, b=6, c=7$. Entonces $s=9$ y \n$$A=\\sqrt{9\\cdot4\\cdot3\\cdot2}=\\sqrt{216}\\approx 14{,}70\\,\\text{u}^2.$$\n</div>\n\n<script>\ndocument.addEventListener(\"DOMContentLoaded\", function() {\n  renderMathInElement(document.body, {\n    delimiters: [\n      {left: \"$$\", right: \"$$\", display: true},\n      {left: \"$\", right: \"$\", display: false}\n    ]\n  });\n});\n</script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "P = a + b + c",
+          "displayMode": true
+        },
+        {
+          "latex": "A = \\frac{b \\cdot h}{2}",
+          "displayMode": true
+        },
+        {
+          "latex": "A = \\sqrt{ s(s-a)(s-b)(s-c) }",
+          "displayMode": true
+        },
+        {
+          "latex": "A=\\sqrt{9\\cdot4\\cdot3\\cdot2}=\\sqrt{216}\\approx 14{,}70\\,\\text{u}^2.",
+          "displayMode": true
+        },
+        {
+          "latex": "h",
+          "displayMode": false
+        },
+        {
+          "latex": "b",
+          "displayMode": false
+        },
+        {
+          "latex": "s=\\tfrac{a+b+c}{2}",
+          "displayMode": false
+        },
+        {
+          "latex": "a=5, b=6, c=7",
+          "displayMode": false
+        },
+        {
+          "latex": "s=9",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    },
+    {
+      "id": "stage-02",
+      "order": 2,
+      "title": "Perímetro y área — ejercicios",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Perímetro y área — ejercicios</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height:1.6; padding: 18px 16px 60px; }\n    h1,h2,h3 { margin: 0.2em 0 0.4em; }\n    .pill { display: inline-block; padding: 0.2em 0.6em; border-radius: 999px; background: #eee; font-size: 0.9em; margin-right: 6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .ex { background: #fff7ed; border-left: 4px solid #ffb86b; padding: 10px 12px; margin: 14px 0; }\n    .note { background: #f6f8fa; border-left: 4px solid #c9d1d9; padding: 10px 12px; margin: 14px 0; }\n    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }\n    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }\n    svg { max-width: 100%; height: auto; display:block; margin: 8px auto; }\n    .q { margin: 8px 0; }\n    code.katex-display { font-size: 1.05em; }\n  </style>\n</head>\n<body>\n\n                    <h1>Ejercicios guiados</h1>\n                    <div class='ex'><strong>1)</strong> Un triángulo tiene $b=8$ y $h=5$. <br>Área: $$A=\\tfrac{8\\cdot5}{2}=20\\,\\text{u}^2.$$</div>\n                    <div class='ex'><strong>2)</strong> Lados $7,9,12$. $s=14$ y $$A=\\sqrt{14\\cdot7\\cdot5\\cdot2}=\\sqrt{980}\\approx 31{,}30\\,\\text{u}^2.$$</div>\n                \n<script>\ndocument.addEventListener(\"DOMContentLoaded\", function() {\n  renderMathInElement(document.body, {\n    delimiters: [\n      {left: \"$$\", right: \"$$\", display: true},\n      {left: \"$\", right: \"$\", display: false}\n    ]\n  });\n});\n</script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "A=\\tfrac{8\\cdot5}{2}=20\\,\\text{u}^2.",
+          "displayMode": true
+        },
+        {
+          "latex": "A=\\sqrt{14\\cdot7\\cdot5\\cdot2}=\\sqrt{980}\\approx 31{,}30\\,\\text{u}^2.",
+          "displayMode": true
+        },
+        {
+          "latex": "b=8",
+          "displayMode": false
+        },
+        {
+          "latex": "h=5",
+          "displayMode": false
+        },
+        {
+          "latex": "7,9,12",
+          "displayMode": false
+        },
+        {
+          "latex": "s=14",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    }
+  ]
+}

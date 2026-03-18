@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-01-numeros-y-patrones-3",
+  "slug": "01-numeros-y-patrones-3",
+  "title": "Números y patrones — 3.º",
+  "metadata": {
+    "contentType": "number-sense",
+    "coursework": "mathematics-primary",
+    "lineIndex": 1,
+    "unitNumber": 1,
+    "gradeBands": [
+      "3"
+    ],
+    "tags": [
+      "numeros",
+      "patrones",
+      "calculo-mental"
+    ]
+  },
+  "lessons": [
+    {
+      "id": "lesson-numeros-y-patrones-3-01-patrones-en-secuencias-3",
+      "order": 1,
+      "file": "./lessons/01-patrones-en-secuencias-3.json"
+    },
+    {
+      "id": "lesson-numeros-y-patrones-3-02-calculo-mental-con-sumas-y-restas-3",
+      "order": 2,
+      "file": "./lessons/02-calculo-mental-con-sumas-y-restas-3.json"
+    }
+  ]
+}

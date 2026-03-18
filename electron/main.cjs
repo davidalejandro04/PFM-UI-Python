@@ -1,9 +1,10 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const fs = require("fs/promises");
 const path = require("path");
+const { pathToFileURL } = require("url");
 
 const ROOT_DIR = path.join(__dirname, "..");
-const LESSONS_FILE = path.join(ROOT_DIR, "data", "lessons.json");
+const LESSON_CATALOG_DIR = path.join(ROOT_DIR, "data", "lesson-catalog");
 
 const DEFAULT_PROFILE = {
   name: "",
@@ -31,6 +32,15 @@ const DEFAULT_SETTINGS = {
 };
 
 const activeChatControllers = new Map();
+let lessonCatalogModulePromise = null;
+
+function getLessonCatalogModule() {
+  if (!lessonCatalogModulePromise) {
+    const moduleUrl = pathToFileURL(path.join(ROOT_DIR, "src", "utils", "lesson-catalog.mjs")).href;
+    lessonCatalogModulePromise = import(moduleUrl);
+  }
+  return lessonCatalogModulePromise;
+}
 
 function userFile(name) {
   return path.join(app.getPath("userData"), name);
@@ -158,7 +168,8 @@ async function captureRegion(event, rect) {
 }
 
 async function bootstrap() {
-  const lessons = JSON.parse(await fs.readFile(LESSONS_FILE, "utf8"));
+  const { loadLessonCatalogFromDirectory } = await getLessonCatalogModule();
+  const lessons = await loadLessonCatalogFromDirectory(LESSON_CATALOG_DIR);
   const profile = await readJson(userFile("profile.json"), DEFAULT_PROFILE);
   const settings = await readJson(userFile("settings.json"), DEFAULT_SETTINGS);
   let shouldPersistSettings = false;

@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   addPracticeXp,
@@ -19,10 +23,90 @@ import {
   firstUnseen,
   getLesson
 } from "../src/utils/lessons.mjs";
+import {
+  LESSON_CATALOG_SCHEMA_VERSION,
+  loadLessonCatalogFromDirectory
+} from "../src/utils/lesson-catalog.mjs";
 import { wrapStageHtml } from "../src/utils/content.mjs";
-import lessons from "../data/lessons.json" with { type: "json" };
+import legacyLessons from "../data/lessons.json" with { type: "json" };
 
-function run() {
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+async function createDuplicateCatalogFixture() {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "lesson-catalog-"));
+  const unitOneDir = path.join(tempDir, "units", "01-unit-one");
+  const unitTwoDir = path.join(tempDir, "units", "02-unit-two");
+  const lessonPayload = (unitId, lessonId, order) => ({
+    schemaVersion: LESSON_CATALOG_SCHEMA_VERSION,
+    id: lessonId,
+    slug: lessonId,
+    unitId,
+    order,
+    title: lessonId,
+    description: "",
+    metadata: {
+      contentType: "lesson",
+      coursework: "math-primary",
+      lineIndex: 1,
+      lessonIndex: order
+    },
+    formulas: [],
+    assets: [],
+    stages: [
+      {
+        id: "stage-01",
+        order: 1,
+        title: "Etapa 1",
+        html: "<html><body><h1>Demo</h1></body></html>"
+      }
+    ]
+  });
+
+  await fs.mkdir(path.join(unitOneDir, "lessons"), { recursive: true });
+  await fs.mkdir(path.join(unitTwoDir, "lessons"), { recursive: true });
+  await fs.writeFile(path.join(tempDir, "catalog.json"), JSON.stringify({
+    schemaVersion: LESSON_CATALOG_SCHEMA_VERSION,
+    units: [
+      { id: "unit-one", order: 1, file: "./units/01-unit-one/unit.json" },
+      { id: "unit-two", order: 2, file: "./units/02-unit-two/unit.json" }
+    ]
+  }, null, 2));
+  await fs.writeFile(path.join(unitOneDir, "unit.json"), JSON.stringify({
+    schemaVersion: LESSON_CATALOG_SCHEMA_VERSION,
+    id: "unit-one",
+    slug: "unit-one",
+    title: "Unidad 1",
+    metadata: {
+      contentType: "numbers",
+      coursework: "math-primary",
+      lineIndex: 1
+    },
+    lessons: [
+      { id: "lesson-one", order: 1, file: "./lessons/01-lesson-one.json" }
+    ]
+  }, null, 2));
+  await fs.writeFile(path.join(unitTwoDir, "unit.json"), JSON.stringify({
+    schemaVersion: LESSON_CATALOG_SCHEMA_VERSION,
+    id: "unit-two",
+    slug: "unit-two",
+    title: "Unidad 2",
+    metadata: {
+      contentType: "geometry",
+      coursework: "math-primary",
+      lineIndex: 1
+    },
+    lessons: [
+      { id: "lesson-two", order: 1, file: "./lessons/01-lesson-two.json" }
+    ]
+  }, null, 2));
+  await fs.writeFile(path.join(unitOneDir, "lessons", "01-lesson-one.json"), JSON.stringify(lessonPayload("unit-one", "lesson-one", 1), null, 2));
+  await fs.writeFile(path.join(unitTwoDir, "lessons", "01-lesson-two.json"), JSON.stringify(lessonPayload("unit-two", "lesson-two", 1), null, 2));
+
+  return tempDir;
+}
+
+async function run() {
+  const lessons = await loadLessonCatalogFromDirectory(path.join(__dirname, "..", "data", "lesson-catalog"));
   let profile = migrateProfile(defaultProfile);
   profile = setupProfile(profile, {
     name: "Ana",
@@ -113,6 +197,11 @@ function run() {
   assert.equal(profile.lessonFlashcards.length, 1);
   assert.equal(profile.lessonFlashcards[0].entries.length, 2);
 
+  assert.equal(lessons.length, legacyLessons.length);
+  assert.equal(
+    lessons.reduce((sum, unit) => sum + unit.lessons.length, 0),
+    legacyLessons.reduce((sum, unit) => sum + unit.lessons.length, 0)
+  );
   const ratio = completionRatio(lessons, new Set());
   assert.ok(ratio.total > 0);
 
@@ -130,7 +219,17 @@ function run() {
   assert.doesNotMatch(html, /cdn\.jsdelivr\.net/);
   assert.doesNotMatch(html, /alert\(1\)/);
 
+  const duplicateCatalogDir = await createDuplicateCatalogFixture();
+  try {
+    await assert.rejects(
+      loadLessonCatalogFromDirectory(duplicateCatalogDir),
+      /mismo coursework\/index/
+    );
+  } finally {
+    await fs.rm(duplicateCatalogDir, { recursive: true, force: true });
+  }
+
   console.log("Smoke checks passed.");
 }
 
-run();
+await run();
