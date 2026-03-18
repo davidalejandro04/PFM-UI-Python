@@ -8,32 +8,36 @@ const LESSONS_FILE = path.join(ROOT_DIR, "data", "lessons.json");
 const DEFAULT_PROFILE = {
   name: "",
   avatar: "tutor",
-  grade: "5.º",
+  grade: "5.o",
   dailyGoal: 20,
-  focusArea: "Resolución de problemas",
+  focusArea: "Resolucion de problemas",
   responseMode: "coach",
   onboardingCompleted: false,
   xp: 0,
   lessonsCompleted: 0,
   completed: [],
-  activity: []
+  activity: [],
+  conceptProgress: []
 };
 
 const DEFAULT_SETTINGS = {
-  inferenceProvider: "ollama",
   currentModel: "",
   ollamaBaseUrl: "http://127.0.0.1:11434",
-  ollamaModel: "",
-  webllmModel: "Qwen3-0.6B-q4f16_1-MLC",
-  webllmCustomModelId: "Qwen3.5-Custom-MLC",
-  webllmCustomModelUrl: "",
-  webllmCustomModelLibUrl: "",
   responseMode: "coach",
   theme: "light"
 };
 
 function userFile(name) {
   return path.join(app.getPath("userData"), name);
+}
+
+function sanitizeRect(rect = {}) {
+  return {
+    x: Math.max(0, Math.round(Number(rect.x) || 0)),
+    y: Math.max(0, Math.round(Number(rect.y) || 0)),
+    width: Math.max(1, Math.round(Number(rect.width) || 0)),
+    height: Math.max(1, Math.round(Number(rect.height) || 0))
+  };
 }
 
 async function readJson(filePath, defaults) {
@@ -57,11 +61,13 @@ async function listOllamaModels(baseUrl) {
   if (!response.ok) {
     throw new Error(`No se pudo consultar Ollama (${response.status})`);
   }
+
   const payload = await response.json();
   return (payload.models || []).map((model) => ({
     name: model.name,
     size: model.size,
-    modifiedAt: model.modified_at
+    modifiedAt: model.modified_at,
+    details: model.details || {}
   }));
 }
 
@@ -77,11 +83,25 @@ async function chatWithOllama({ baseUrl, model, messages }) {
   });
 
   if (!response.ok) {
-    throw new Error(`Ollama devolvió ${response.status}`);
+    throw new Error(`Ollama devolvio ${response.status}`);
   }
 
   const payload = await response.json();
   return payload.message?.content || "";
+}
+
+async function captureRegion(event, rect) {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (!window) {
+    throw new Error("No se encontro una ventana activa para capturar.");
+  }
+
+  const bounds = sanitizeRect(rect);
+  const image = await window.capturePage(bounds);
+  return {
+    mimeType: "image/png",
+    base64: image.toPNG().toString("base64")
+  };
 }
 
 async function bootstrap() {
@@ -101,16 +121,12 @@ async function bootstrap() {
         ? `${availableModels.length} modelos detectados en Ollama.`
         : "Ollama responde, pero no hay modelos descargados."
     };
-    if (!settings.ollamaModel && availableModels[0]) {
-      settings.ollamaModel = availableModels[0].name;
-      shouldPersistSettings = true;
-    }
-    if (settings.inferenceProvider === "ollama" && !settings.currentModel && settings.ollamaModel) {
+    if (!settings.currentModel && settings.ollamaModel) {
       settings.currentModel = settings.ollamaModel;
       shouldPersistSettings = true;
     }
-    if (settings.inferenceProvider === "webllm" && !settings.currentModel && settings.webllmModel) {
-      settings.currentModel = settings.webllmModel;
+    if (!settings.currentModel && availableModels[0]) {
+      settings.currentModel = availableModels[0].name;
       shouldPersistSettings = true;
     }
   } catch (error) {
@@ -156,6 +172,7 @@ app.whenReady().then(() => {
   ipcMain.handle("settings:save", (_event, settings) => writeJson(userFile("settings.json"), settings));
   ipcMain.handle("ollama:list-models", (_event, baseUrl) => listOllamaModels(baseUrl));
   ipcMain.handle("ollama:chat", (_event, payload) => chatWithOllama(payload));
+  ipcMain.handle("window:capture-region", captureRegion);
 
   createWindow();
 

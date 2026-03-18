@@ -101,6 +101,15 @@ export function wrapStageHtml(rawHtml, lessonTitle, stageIndex, stageCount) {
       border-bottom: 1px solid var(--line);
       text-align: left;
     }
+    img, svg, canvas {
+      max-width: 100%;
+      height: auto;
+    }
+    .crop-mode,
+    .crop-mode * {
+      cursor: crosshair !important;
+      user-select: none !important;
+    }
     .katex-display {
       overflow-x: auto;
       overflow-y: hidden;

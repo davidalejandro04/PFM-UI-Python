@@ -6,5 +6,6 @@ contextBridge.exposeInMainWorld("bridge", {
   resetProfile: () => ipcRenderer.invoke("profile:reset"),
   saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   listModels: (baseUrl) => ipcRenderer.invoke("ollama:list-models", baseUrl),
-  chat: (payload) => ipcRenderer.invoke("ollama:chat", payload)
+  chat: (payload) => ipcRenderer.invoke("ollama:chat", payload),
+  captureRegion: (rect) => ipcRenderer.invoke("window:capture-region", rect)
 });

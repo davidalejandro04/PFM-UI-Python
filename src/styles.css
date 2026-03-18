@@ -204,6 +204,12 @@ button, input, select, textarea { font: inherit; }
   flex-wrap: wrap;
 }
 
+.chip-wrap {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .page-content {
   flex: 1 1 auto;
   min-height: 0;
@@ -456,6 +462,59 @@ select {
   border: 0;
   border-radius: 24px;
   background: #fff;
+  display: block;
+}
+
+.reader-helper-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reader-frame-shell {
+  position: relative;
+  min-height: 70vh;
+}
+
+.lesson-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 24px;
+}
+
+.lesson-overlay-hint,
+.lesson-floating-menu {
+  position: absolute;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.lesson-overlay-hint {
+  top: 16px;
+  left: 16px;
+  max-width: min(360px, calc(100% - 32px));
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: rgba(23, 49, 59, 0.9);
+  color: #fffdf7;
+  box-shadow: 0 18px 40px rgba(23, 49, 59, 0.22);
+}
+
+.lesson-floating-menu {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.crop-selection {
+  position: absolute;
+  z-index: 2;
+  border: 2px solid #58cc02;
+  border-radius: 16px;
+  background: rgba(88, 204, 2, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
 }
 
 .explanation-panel {
@@ -478,6 +537,134 @@ select {
 
 .explanation-copy {
   line-height: 1.55;
+}
+
+.study-trail {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.trail-node {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: #fffdf8;
+  border: 1px solid var(--line);
+}
+
+.trail-index {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #dff5cc;
+  color: var(--primary-strong);
+  font-weight: 800;
+}
+
+.study-card-grid,
+.step-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.study-card,
+.step-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.study-copy {
+  line-height: 1.6;
+}
+
+.example-box {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #fffdf8;
+  border: 1px solid var(--line);
+}
+
+.step-card.done {
+  background: #eff9e6;
+  border-color: #9cd16d;
+}
+
+.game-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.match-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  gap: 14px;
+}
+
+.match-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.match-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
+  gap: 12px;
+  align-items: start;
+}
+
+.match-left {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #fffdf8;
+  border: 1px solid var(--line);
+  font-weight: 700;
+}
+
+.match-dropzone,
+.match-bank {
+  min-height: 60px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px dashed #9cc1cb;
+  background: rgba(255, 253, 248, 0.84);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.match-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #eef9fd;
+  border: 1px solid #79cce9;
+  color: var(--secondary);
+  font-weight: 700;
+  cursor: grab;
+}
+
+.match-chip.placed {
+  cursor: default;
+}
+
+.ghost-btn.tiny {
+  padding: 8px 10px;
+}
+
+.practice-session {
+  padding-bottom: 6px;
 }
 
 .modal {
@@ -682,5 +869,10 @@ select {
 
   .reader-stage iframe {
     min-height: 54vh;
+  }
+
+  .match-grid,
+  .match-row {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,14 +1,16 @@
-import { CreateWebWorkerMLCEngine } from "../node_modules/@mlc-ai/web-llm/lib/index.js";
 import {
   addPracticeXp,
   completedPairs,
   defaultProfile,
+  hasStudiedConcept,
+  knownConcepts,
   migrateProfile,
   profileSummary,
   recentActivity,
   recordLessonCompletion,
   resetProgress,
-  setupProfile
+  setupProfile,
+  trackConceptStudy
 } from "./utils/profile.mjs";
 import {
   completionRatio,
@@ -19,19 +21,18 @@ import {
 } from "./utils/lessons.mjs";
 import { wrapStageHtml } from "./utils/content.mjs";
 import {
+  buildClassifierUserPrompt,
+  buildExerciseTutorUserPrompt,
+  buildExplainImageUserPrompt,
   buildExplainUserPrompt,
-  buildSystemPrompt,
+  buildStudyDeckUserPrompt,
   explainPrompt,
-  modeLabels
+  exerciseTutorPrompt,
+  modeLabels,
+  studyClassifierPrompt,
+  studyDeckPrompt,
+  visionExplainPrompt
 } from "./utils/prompts.mjs";
-import {
-  WEBLLM_CUSTOM_QWEN35_ID,
-  buildWebLLMEngineConfig,
-  getDefaultWebLLMModel,
-  getWebLLMModelChoices,
-  getWebLLMModelLabel,
-  isCustomWebLLMModel
-} from "./utils/inference.mjs";
 
 const avatarMap = {
   tutor: "../assets/svg/tutor.svg",
@@ -51,32 +52,45 @@ const iconMap = {
 const pageMeta = {
   lessons: {
     title: "Lecciones",
-    subtitle: "Explora rutas visuales y navega por etapas dentro del lector."
+    subtitle: "Explora rutas visuales y activa ayuda contextual sobre texto o imagen."
   },
   practice: {
     title: "Estudio guiado",
-    subtitle: "Practica con el runtime local activo y cambia el modo de respuesta."
+    subtitle: "El tutor clasifica la pregunta y arma un recorrido de concepto o ejercicio."
   },
   profile: {
     title: "Perfil",
-    subtitle: "Onboarding, progreso tipo ruta y actividad reciente."
+    subtitle: "Onboarding, progreso tipo ruta y conceptos registrados del estudiante."
   }
 };
 
-const WEBLLM_DEFAULT_MODEL = getDefaultWebLLMModel();
-const WEBLLM_CHOICES = getWebLLMModelChoices();
 const DEFAULT_SETTINGS = {
-  inferenceProvider: "ollama",
   currentModel: "",
   ollamaBaseUrl: "http://127.0.0.1:11434",
-  ollamaModel: "",
-  webllmModel: WEBLLM_DEFAULT_MODEL,
-  webllmCustomModelId: WEBLLM_CUSTOM_QWEN35_ID,
-  webllmCustomModelUrl: "",
-  webllmCustomModelLibUrl: "",
   responseMode: "coach",
   theme: "light"
 };
+
+const PRACTICE_KIND_LABELS = {
+  concept: "Concepto",
+  exercise: "Ejercicio",
+  non_math: "No relacionado"
+};
+
+const VISION_MODEL_PATTERNS = [
+  "llava",
+  "bakllava",
+  "vision",
+  "moondream",
+  "minicpm-v",
+  "minicpmv",
+  "qwen2.5vl",
+  "qwen2vl",
+  "gemma3",
+  "llama3.2-vision",
+  "phi4-multimodal",
+  "granite-vision"
+];
 
 const state = {
   lessons: [],
@@ -84,13 +98,13 @@ const state = {
   settings: { ...DEFAULT_SETTINGS },
   availableModels: [],
   ollama: { ok: false, message: "Sin conexion con Ollama." },
-  webllm: createWebLLMState(),
   page: "lessons",
   selectedUnit: null,
   currentLesson: null,
   stageIndex: 0,
   practiceMode: "coach",
   chatMessages: [],
+  practiceSession: null,
   isThinking: false,
   explanation: { open: false, busy: false, cards: [] },
   settingsOpen: false,
@@ -99,36 +113,32 @@ const state = {
   onboardingStep: 0,
   selectedText: "",
   scrollTarget: null,
+  lessonUi: {
+    scroll: { x: 0, y: 0 },
+    contextMenu: { open: false, x: 20, y: 20 },
+    cropMode: false,
+    dragStart: null,
+    cropRect: null,
+    cropAction: { open: false, x: 20, y: 20 }
+  },
   loadingPanel: {
     open: true,
     title: "Preparando TutorMate",
-    detail: "Un momento. Estoy acomodando tus lecciones y despertando el modelo."
+    detail: "Un momento. Estoy acomodando tus lecciones y conectando Ollama."
   }
 };
 
 const root = document.getElementById("app");
 const modalRoot = document.getElementById("modal-root");
-let webllmRuntime = { engine: null, worker: null, signature: "" };
 
 render();
 await bootstrap();
 document.addEventListener("click", handleClick);
 document.addEventListener("input", handleInput);
 document.addEventListener("submit", handleSubmit);
-
-function createWebLLMState() {
-  const supported = typeof navigator !== "undefined" && "gpu" in navigator;
-  return {
-    supported,
-    ok: supported,
-    loading: false,
-    message: supported
-      ? "WebGPU detectado. WebLLM puede cargar modelos en un worker local."
-      : "WebGPU no esta disponible en este runtime de Electron.",
-    loadedModel: "",
-    progress: ""
-  };
-}
+document.addEventListener("dragstart", handleDragStart);
+document.addEventListener("dragover", handleDragOver);
+document.addEventListener("drop", handleDrop);
 
 function escapeHtml(value = "") {
   return String(value)
@@ -160,6 +170,64 @@ function stripCodeFence(text = "") {
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/i, "")
     .trim();
+}
+
+function stripAccents(value = "") {
+  return String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function slugify(value = "") {
+  return stripAccents(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizeLooseAnswer(value = "") {
+  return stripAccents(value)
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[.,;:!?¿¡'"]/g, "")
+    .trim();
+}
+
+function safeJsonParse(text = "", fallback = null) {
+  try {
+    return JSON.parse(stripCodeFence(text));
+  } catch {
+    return fallback;
+  }
+}
+
+function uniqueList(values = []) {
+  const seen = new Set();
+  const items = [];
+
+  for (const value of values) {
+    const text = String(value || "").trim();
+    if (!text) continue;
+    const key = slugify(text);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    items.push(text);
+  }
+
+  return items;
+}
+
+function shuffle(values = []) {
+  const next = [...values];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+  }
+  return next;
 }
 
 function fallbackExplanationCards(text = "", selection = "") {
@@ -233,114 +301,21 @@ function renderExplanationCards(cards = []) {
   `;
 }
 
-function providerLabel(provider = state.settings.inferenceProvider) {
-  return provider === "webllm" ? "WebLLM" : "Ollama";
-}
-
-function activeModelId(settings = state.settings) {
-  if (settings.inferenceProvider !== "webllm") {
-    return settings.ollamaModel || "";
-  }
-  if (isCustomWebLLMModel(settings.webllmModel)) {
-    return settings.webllmCustomModelId?.trim() || WEBLLM_CUSTOM_QWEN35_ID;
-  }
-  return settings.webllmModel || "";
-}
-
-function activeModelLabel(settings = state.settings) {
-  if (settings.inferenceProvider !== "webllm") {
-    return settings.ollamaModel || "";
-  }
-  if (isCustomWebLLMModel(settings.webllmModel)) {
-    return settings.webllmCustomModelId?.trim() || "Qwen3.5 / Custom MLC";
-  }
-  return getWebLLMModelLabel(settings.webllmModel);
-}
-
-function activeRuntimeStatus() {
-  return state.settings.inferenceProvider === "webllm" ? state.webllm : state.ollama;
-}
-
-function runtimeBadgeLabel() {
-  if (state.settings.inferenceProvider === "webllm") {
-    if (!state.webllm.supported) return "WebGPU no disponible";
-    if (state.webllm.loading) return state.webllm.progress ? `Cargando ${state.webllm.progress}` : "Cargando modelo";
-    return state.webllm.loadedModel ? "Modelo listo" : "WebGPU listo";
-  }
-  if (state.ollama.ok) {
-    return state.availableModels.length ? `${state.availableModels.length} modelos` : "Ollama conectado";
-  }
-  return "Ollama no disponible";
-}
-
-function selectedWebLLMChoice(settings = state.settings) {
-  return WEBLLM_CHOICES.find((item) => item.modelId === settings.webllmModel) || null;
-}
-
-function buildActiveWebLLMConfig(settings = state.settings) {
-  return buildWebLLMEngineConfig({
-    ...settings,
-    currentModel: settings.webllmModel || WEBLLM_DEFAULT_MODEL
-  });
-}
-
-function webllmSignature(settings = state.settings) {
-  const config = buildActiveWebLLMConfig(settings);
-  return config.ok ? config.signature : "";
-}
-
 function inferenceReadiness(settings = state.settings) {
-  if (settings.inferenceProvider === "ollama") {
-    return {
-      ready: Boolean(settings.ollamaModel),
-      reason: settings.ollamaModel ? "" : "Selecciona un modelo de Ollama."
-    };
-  }
-
-  if (!state.webllm.supported) {
-    return {
-      ready: false,
-      reason: "WebGPU no esta disponible en este runtime."
-    };
-  }
-
-  const config = buildActiveWebLLMConfig(settings);
   return {
-    ready: config.ok,
-    reason: config.reason || ""
+    ready: Boolean(settings.currentModel),
+    reason: settings.currentModel ? "" : "Selecciona un modelo de Ollama."
   };
 }
 
 function normalizeSettings(raw = {}, availableModels = state.availableModels) {
   const merged = { ...DEFAULT_SETTINGS, ...raw };
-  const knownWebLLMIds = new Set(WEBLLM_CHOICES.map((item) => item.modelId));
-
-  if (!merged.webllmCustomModelId) {
-    merged.webllmCustomModelId = WEBLLM_CUSTOM_QWEN35_ID;
+  if (!merged.currentModel && merged.ollamaModel) {
+    merged.currentModel = merged.ollamaModel;
   }
-
-  if (!merged.ollamaModel && merged.inferenceProvider === "ollama" && merged.currentModel) {
-    merged.ollamaModel = merged.currentModel;
+  if (!merged.currentModel && availableModels[0]?.name) {
+    merged.currentModel = availableModels[0].name;
   }
-
-  if (!merged.webllmModel && merged.inferenceProvider === "webllm" && merged.currentModel) {
-    if (knownWebLLMIds.has(merged.currentModel)) {
-      merged.webllmModel = merged.currentModel;
-    } else {
-      merged.webllmModel = WEBLLM_CUSTOM_QWEN35_ID;
-      merged.webllmCustomModelId = merged.webllmCustomModelId || merged.currentModel;
-    }
-  }
-
-  if (!merged.ollamaModel && availableModels[0]?.name) {
-    merged.ollamaModel = availableModels[0].name;
-  }
-
-  if (!merged.webllmModel) {
-    merged.webllmModel = WEBLLM_DEFAULT_MODEL;
-  }
-
-  merged.currentModel = activeModelId(merged);
   return merged;
 }
 
@@ -357,16 +332,6 @@ function openLoadingPanel({ title, detail }) {
   render();
 }
 
-function updateLoadingPanel({ title, detail } = {}) {
-  if (!state.loadingPanel.open) return;
-  state.loadingPanel = {
-    ...state.loadingPanel,
-    title: title || state.loadingPanel.title,
-    detail: detail || state.loadingPanel.detail
-  };
-  render();
-}
-
 function closeLoadingPanel() {
   if (!state.loadingPanel.open) return;
   state.loadingPanel = {
@@ -379,7 +344,7 @@ function closeLoadingPanel() {
 async function bootstrap() {
   openLoadingPanel({
     title: "Preparando TutorMate",
-    detail: "Estoy revisando tus lecciones y conectando el runtime local."
+    detail: "Estoy revisando tus lecciones y conectando Ollama local."
   });
 
   const payload = await window.bridge.bootstrap();
@@ -399,17 +364,8 @@ async function bootstrap() {
     // Render even when persistence is not available.
   }
 
-  if (state.settings.inferenceProvider === "webllm" && inferenceReadiness().ready) {
-    try {
-      await ensureWebLLMEngine();
-    } catch {
-      closeLoadingPanel();
-    }
-  } else {
-    await sleep(500);
-    closeLoadingPanel();
-  }
-
+  await sleep(450);
+  closeLoadingPanel();
   render();
 }
 
@@ -425,6 +381,117 @@ function currentSuggestion() {
   return firstUnseen(state.lessons, currentCompletedSet());
 }
 
+function currentModelInfo() {
+  return state.availableModels.find((item) => item.name === state.settings.currentModel) || null;
+}
+
+function currentModelSupportsVision() {
+  const model = currentModelInfo();
+  const haystack = [
+    state.settings.currentModel,
+    model?.details?.family,
+    ...(model?.details?.families || [])
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return VISION_MODEL_PATTERNS.some((pattern) => haystack.includes(pattern));
+}
+
+function resetLessonAssistState() {
+  state.selectedText = "";
+  state.explanation = { open: false, busy: false, cards: [] };
+  state.lessonUi = {
+    scroll: { x: 0, y: 0 },
+    contextMenu: { open: false, x: 20, y: 20 },
+    cropMode: false,
+    dragStart: null,
+    cropRect: null,
+    cropAction: { open: false, x: 20, y: 20 }
+  };
+}
+
+function closeLessonMenus({ clearCrop = false } = {}) {
+  const hadState = state.lessonUi.contextMenu.open || state.lessonUi.cropAction.open || state.lessonUi.cropMode;
+  state.lessonUi.contextMenu = { ...state.lessonUi.contextMenu, open: false };
+  state.lessonUi.cropAction = { ...state.lessonUi.cropAction, open: false };
+  state.lessonUi.cropMode = false;
+  state.lessonUi.dragStart = null;
+  if (clearCrop) {
+    state.lessonUi.cropRect = null;
+  }
+  return hadState;
+}
+
+function renderLessonOverlay() {
+  const parts = [];
+
+  if (state.lessonUi.cropMode) {
+    parts.push(`<div class="lesson-overlay-hint">Arrastra para recortar una imagen, un diagrama o una parte visible de la leccion.</div>`);
+  }
+
+  if (state.lessonUi.cropRect) {
+    parts.push(`
+      <div
+        class="crop-selection"
+        style="left:${state.lessonUi.cropRect.x}px;top:${state.lessonUi.cropRect.y}px;width:${state.lessonUi.cropRect.width}px;height:${state.lessonUi.cropRect.height}px;"
+      ></div>
+    `);
+  }
+
+  if (state.lessonUi.contextMenu.open && state.selectedText) {
+    parts.push(`
+      <div class="lesson-floating-menu" style="left:${state.lessonUi.contextMenu.x}px;top:${state.lessonUi.contextMenu.y}px;">
+        <button class="btn secondary" data-action="explain-selection">Explica la seleccion</button>
+      </div>
+    `);
+  }
+
+  if (state.lessonUi.cropAction.open && state.lessonUi.cropRect && currentModelSupportsVision()) {
+    parts.push(`
+      <div class="lesson-floating-menu" style="left:${state.lessonUi.cropAction.x}px;top:${state.lessonUi.cropAction.y}px;">
+        <button class="btn primary" data-action="ask-image-selection">Que es esto?</button>
+        <button class="btn secondary" data-action="clear-crop">Limpiar</button>
+      </div>
+    `);
+  }
+
+  return parts.join("");
+}
+
+function renderLessonExplanationBody() {
+  if (!state.explanation.open) {
+    return `<div class="empty-state">No hay explicacion activa.</div>`;
+  }
+
+  if (state.explanation.busy) {
+    return `<div class="typing"><span></span><span></span><span></span></div>`;
+  }
+
+  return renderExplanationCards(state.explanation.cards);
+}
+
+function syncLessonUi() {
+  const overlay = document.getElementById("lesson-overlay");
+  if (overlay) {
+    overlay.innerHTML = renderLessonOverlay();
+  }
+
+  const explanationBody = document.getElementById("lesson-explanation-body");
+  if (explanationBody) {
+    explanationBody.innerHTML = renderLessonExplanationBody();
+    enhanceMath(explanationBody);
+  }
+
+  const cropButton = document.querySelector('[data-action="toggle-crop-mode"]');
+  if (cropButton) {
+    cropButton.textContent = state.lessonUi.cropMode ? "Cancelar recorte" : "Seleccionar recorte";
+    cropButton.classList.toggle("primary", state.lessonUi.cropMode);
+    cropButton.classList.toggle("secondary", !state.lessonUi.cropMode);
+  }
+}
+
 function render() {
   root.innerHTML = renderShell();
   modalRoot.innerHTML = [
@@ -432,8 +499,10 @@ function render() {
     state.loadingPanel.open ? renderLoadingPanel() : ""
   ].join("");
   wireLessonFrame();
+  syncLessonUi();
   enhanceMath(document.querySelector(".page-content"));
   enhanceMath(document.querySelector(".chat-feed"));
+  enhanceMath(document.querySelector(".practice-session"));
   scrollPendingTarget();
 }
 
@@ -447,15 +516,14 @@ function scrollPendingTarget() {
 function renderShell() {
   const summary = currentSummary();
   const meta = pageMeta[state.page];
-  const runtime = activeRuntimeStatus();
-  const modelLabel = activeModelLabel() || "Sin modelo";
+  const modelLabel = state.settings.currentModel || "Sin modelo";
 
   return `
     <div class="app-shell">
       <aside class="rail">
         <div>
           <h1 class="brand-title">TutorMate</h1>
-          <p class="muted">Electron con Ollama o WebLLM para un tutor local sin backend Python.</p>
+          <p class="muted">Electron con Ollama para un tutor local sin backend Python.</p>
         </div>
         <div class="stack">
           ${renderNavButton("lessons", "Lecciones")}
@@ -466,7 +534,8 @@ function renderShell() {
           <div class="tag">${escapeHtml(summary.displayName)}</div>
           <p><strong>${summary.xp} XP</strong> - Nivel ${summary.level}</p>
           <p class="muted">Racha ${summary.streakDays} dias - Meta ${summary.dailyGoalProgress}/${summary.dailyGoal} XP</p>
-          <p class="muted">Runtime: ${escapeHtml(providerLabel())}</p>
+          <p class="muted">Conceptos registrados: ${summary.knownConcepts}</p>
+          <p class="muted">Runtime: Ollama</p>
           <p class="muted">Modelo: ${escapeHtml(modelLabel)}</p>
         </section>
       </aside>
@@ -477,9 +546,9 @@ function renderShell() {
             <p class="muted">${meta.subtitle}</p>
           </div>
           <div class="header-actions">
-            <span class="tag">${escapeHtml(providerLabel())}</span>
+            <span class="tag">Ollama</span>
             <span class="tag">${escapeHtml(modelLabel)}</span>
-            <span class="tag ${runtime.ok && !runtime.loading ? "good" : ""}">${escapeHtml(runtimeBadgeLabel())}</span>
+            <span class="tag ${state.ollama.ok ? "good" : ""}">${escapeHtml(state.ollama.message)}</span>
             <button class="btn secondary" data-action="open-settings">Preferencias</button>
           </div>
         </header>
@@ -516,7 +585,7 @@ function renderLessonsPage() {
         <div class="row">
           <div class="hero-copy">
             <h2>Rutas de aprendizaje</h2>
-            <p class="muted">Los datos de lecciones siguen viniendo del JSON local y la ayuda contextual usa el runtime activo.</p>
+            <p class="muted">Los datos de lecciones vienen del JSON local y la ayuda contextual usa Ollama.</p>
           </div>
           <span class="tag">${ratio.done}/${ratio.total} completadas</span>
         </div>
@@ -587,6 +656,7 @@ function renderLessonReader() {
   const stages = lesson.stages || [];
   const stage = stages[state.stageIndex] || { html: "<p>Sin contenido.</p>" };
   const iframeHtml = wrapStageHtml(stage.html, lesson.title, state.stageIndex + 1, stages.length);
+  const visionReady = currentModelSupportsVision() && inferenceReadiness().ready;
 
   return `
     <div class="reader-panel">
@@ -600,11 +670,24 @@ function renderLessonReader() {
             </div>
             <div class="row">
               <button class="btn secondary" data-action="close-lesson">Volver</button>
-              <button class="btn secondary" data-action="explain-selection" ${state.selectedText ? "" : "disabled"}>Explica la seleccion</button>
+              ${currentModelSupportsVision()
+                ? `<button class="btn ${state.lessonUi.cropMode ? "primary" : "secondary"}" data-action="toggle-crop-mode">${state.lessonUi.cropMode ? "Cancelar recorte" : "Seleccionar recorte"}</button>`
+                : ""}
             </div>
           </div>
+          <div class="reader-helper-row">
+            <span class="tag">Texto: selecciona y haz clic derecho para explicar.</span>
+            <span class="tag ${visionReady ? "good" : ""}">
+              ${visionReady
+                ? "Imagen: arrastra un recorte y pregunta Que es esto?"
+                : "Usa un modelo con vision para preguntas sobre imagenes"}
+            </span>
+          </div>
           <div class="progress-bar"><span style="width:${((state.stageIndex + 1) / stages.length) * 100}%"></span></div>
-          <iframe id="lesson-frame" title="Leccion" data-srcdoc="${encodeURIComponent(iframeHtml)}"></iframe>
+          <div class="reader-frame-shell" id="lesson-frame-shell">
+            <iframe id="lesson-frame" title="Leccion" data-srcdoc="${encodeURIComponent(iframeHtml)}"></iframe>
+            <div class="lesson-overlay" id="lesson-overlay">${renderLessonOverlay()}</div>
+          </div>
           <div class="row">
             <button class="btn secondary" data-action="lesson-prev" ${state.stageIndex === 0 ? "disabled" : ""}>Anterior</button>
             ${state.stageIndex < stages.length - 1
@@ -615,79 +698,301 @@ function renderLessonReader() {
       </section>
       <aside class="explanation-panel">
         <h3 style="margin-top:0;">Ayuda contextual</h3>
-        <p class="muted">Selecciona texto dentro del lector y recibe tres tarjetas: concepto, ejemplo y respuesta directa.</p>
-        ${state.explanation.open
-          ? state.explanation.busy
-            ? `<div class="typing"><span></span><span></span><span></span></div>`
-            : renderExplanationCards(state.explanation.cards)
-          : `<div class="empty-state">No hay explicacion activa.</div>`}
+        <p class="muted">Selecciona texto y haz clic derecho. Si tu modelo tiene vision, tambien puedes recortar una imagen de la leccion.</p>
+        <div id="lesson-explanation-body">${renderLessonExplanationBody()}</div>
       </aside>
     </div>
   `;
 }
 
+function renderTranscript() {
+  if (!state.chatMessages.length) {
+    return `<div class="empty-state">Pregunta algo sobre matematicas y el tutor decidira si debe construir un recorrido conceptual, una practica guiada o frenar por no ser contenido matematico.</div>`;
+  }
+
+  return state.chatMessages.map((message) => `
+    <div class="message ${message.role === "user" ? "user" : "bot"}">${formatRichText(message.text)}</div>
+  `).join("");
+}
+
+function renderSessionSummary() {
+  if (!state.practiceSession) {
+    return `<div class="empty-state">Todavia no hay una sesion de estudio activa.</div>`;
+  }
+
+  return `
+    <div class="card stack">
+      <div class="card-head">
+        <div>
+          <strong>${PRACTICE_KIND_LABELS[state.practiceSession.kind] || "Sesion"}</strong>
+          <p class="muted">${escapeHtml(state.practiceSession.topic || "Sin tema")}</p>
+        </div>
+        <span class="tag">${escapeHtml(state.practiceSession.conceptTopic || state.practiceSession.topic || "Tutor")}</span>
+      </div>
+      <p class="muted">${escapeHtml(state.practiceSession.reason || "Sin razon registrada.")}</p>
+      ${state.practiceSession.reusedConcept
+        ? `<div class="tag good">Se reutilizo una memoria de concepto ya registrada.</div>`
+        : ""}
+    </div>
+  `;
+}
+
+function renderKnownConceptChips(limit = 8) {
+  const concepts = knownConcepts(state.profile).slice(0, limit);
+  if (!concepts.length) {
+    return `<div class="empty-state">Aun no hay conceptos registrados para este estudiante.</div>`;
+  }
+
+  return `
+    <div class="chip-wrap">
+      ${concepts.map((concept) => `
+        <span class="tag ${concept.status === "known" ? "good" : ""}">${escapeHtml(concept.topic)}</span>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderStudyTrail(trail = []) {
+  if (!trail.length) return "";
+
+  return `
+    <div class="study-trail">
+      ${trail.map((item, index) => `
+        <div class="trail-node">
+          <span class="trail-index">${index + 1}</span>
+          <span>${escapeHtml(item)}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderStudyGameCard(card, gameState) {
+  if (card.gameType !== "match-pairs") {
+    return `<div class="empty-state">Este tipo de juego aun no tiene render, pero la estructura ya permite agregar nuevas variantes.</div>`;
+  }
+
+  const placements = gameState?.placements || {};
+  const assignedIds = new Set(Object.values(placements).filter(Boolean));
+  const availableOptions = (gameState?.options || []).filter((option) => !assignedIds.has(option.id));
+
+  return `
+    <div class="game-card">
+      <p class="muted">${escapeHtml(card.instructions || "Relaciona cada idea con su descripcion.")}</p>
+      <div class="match-grid">
+        <div class="match-column">
+          ${(gameState?.pairs || []).map((pair) => {
+            const placed = placements[pair.leftId];
+            const option = (gameState.options || []).find((item) => item.id === placed);
+            return `
+              <div class="match-row">
+                <div class="match-left">${escapeHtml(pair.left)}</div>
+                <div class="match-dropzone" data-dropzone="match" data-game-id="${escapeHtml(card.id)}" data-left-id="${escapeHtml(pair.leftId)}">
+                  ${option
+                    ? `<span class="match-chip placed">${escapeHtml(option.text)}</span>
+                       <button class="ghost-btn tiny" data-action="remove-match" data-game-id="${escapeHtml(card.id)}" data-left-id="${escapeHtml(pair.leftId)}">Quitar</button>`
+                    : `<span class="muted">Suelta aqui</span>`}
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+        <div class="match-column">
+          <div class="match-bank">
+            ${availableOptions.length
+              ? availableOptions.map((option) => `
+                  <div
+                    class="match-chip"
+                    draggable="true"
+                    data-game-id="${escapeHtml(card.id)}"
+                    data-game-option-id="${escapeHtml(option.id)}"
+                  >${escapeHtml(option.text)}</div>
+                `).join("")
+              : `<div class="empty-state">Todos los conceptos ya fueron colocados.</div>`}
+          </div>
+        </div>
+      </div>
+      ${gameState?.completed ? `<div class="tag good">Juego completado. El concepto quedo marcado como conocido.</div>` : ""}
+      ${gameState?.feedback ? `<p class="muted">${escapeHtml(gameState.feedback)}</p>` : ""}
+    </div>
+  `;
+}
+
+function renderDeckCard(card) {
+  if (card.kind === "concept") {
+    return `
+      <article class="card study-card">
+        <p class="tag">1. Concepto</p>
+        <h4>${escapeHtml(card.title)}</h4>
+        <div class="study-copy">${formatRichText(card.body)}</div>
+        ${card.checkPrompt ? `<p class="muted">${escapeHtml(card.checkPrompt)}</p>` : ""}
+      </article>
+    `;
+  }
+
+  if (card.kind === "example") {
+    return `
+      <article class="card study-card">
+        <p class="tag">2. Ejemplo</p>
+        <h4>${escapeHtml(card.title)}</h4>
+        <div class="study-copy">${formatRichText(card.body)}</div>
+        ${card.example ? `<div class="example-box">${formatRichText(card.example)}</div>` : ""}
+        ${card.prompt ? `<p class="muted">${escapeHtml(card.prompt)}</p>` : ""}
+      </article>
+    `;
+  }
+
+  if (card.kind === "game") {
+    const gameState = state.practiceSession?.gameState?.[card.id];
+    return `
+      <article class="card study-card">
+        <p class="tag">3. Juego</p>
+        <h4>${escapeHtml(card.title)}</h4>
+        <div class="study-copy">${formatRichText(card.body)}</div>
+        ${renderStudyGameCard(card, gameState)}
+      </article>
+    `;
+  }
+
+  return `
+    <article class="card study-card">
+      <h4>${escapeHtml(card.title || "Tarjeta")}</h4>
+      <div class="study-copy">${formatRichText(card.body || "")}</div>
+    </article>
+  `;
+}
+
+function renderExerciseStep(step, index) {
+  const inputValue = state.practiceSession?.stepInputs?.[step.id] || "";
+  const result = state.practiceSession?.stepResults?.[step.id] || null;
+  const hintOpen = Boolean(state.practiceSession?.openHints?.[step.id]);
+
+  return `
+    <article class="card step-card ${result?.correct ? "done" : ""}">
+      <div class="card-head">
+        <div>
+          <p class="tag">Paso ${index + 1}</p>
+          <h4 style="margin:8px 0 4px;">${escapeHtml(step.title)}</h4>
+        </div>
+        ${result?.correct ? `<span class="tag good">Correcto</span>` : ""}
+      </div>
+      <p>${escapeHtml(step.prompt)}</p>
+      <textarea data-step-input-id="${escapeHtml(step.id)}" placeholder="Completa este paso...">${escapeHtml(inputValue)}</textarea>
+      <div class="row">
+        <button class="btn primary" data-action="check-step" data-step-id="${escapeHtml(step.id)}">Comprobar</button>
+        <button class="btn secondary" data-action="toggle-step-hint" data-step-id="${escapeHtml(step.id)}">${hintOpen ? "Ocultar pista" : "Mostrar pista"}</button>
+      </div>
+      ${hintOpen ? `<p class="muted">${escapeHtml(step.hint || "Sin pista disponible.")}</p>` : ""}
+      ${result?.message ? `<p class="muted">${escapeHtml(result.message)}</p>` : ""}
+      ${result?.correct ? `<div class="study-copy">${formatRichText(step.explanation || "")}</div>` : ""}
+    </article>
+  `;
+}
+
+function renderPracticeSession() {
+  const session = state.practiceSession;
+  if (!session) {
+    return "";
+  }
+
+  return `
+    <section class="practice-session stack">
+      ${session.kind === "non_math"
+        ? `<div class="empty-state">La ultima pregunta se detecto como no relacionada con matematicas, asi que el tutor no construyo un recorrido de estudio.</div>`
+        : ""}
+      ${session.deck
+        ? `
+          <section class="hero-card stack">
+            <div class="card-head">
+              <div>
+                <h3 style="margin:0;">Tarjetas de estudio</h3>
+                <p class="muted">${escapeHtml(session.deck.topic)}</p>
+              </div>
+              <span class="tag">${session.deck.cards.length} tarjetas</span>
+            </div>
+            ${renderStudyTrail(session.deck.focusTrail)}
+            <div class="study-card-grid">
+              ${session.deck.cards.map((card) => renderDeckCard(card)).join("")}
+            </div>
+          </section>
+        `
+        : ""}
+      ${session.solution
+        ? `
+          <section class="hero-card stack">
+            <div class="card-head">
+              <div>
+                <h3 style="margin:0;">Solucion guiada</h3>
+                <p class="muted">${escapeHtml(session.solution.exercise || session.topic)}</p>
+              </div>
+              <span class="tag">${session.solution.steps.length} pasos</span>
+            </div>
+            <div class="step-grid">
+              ${session.solution.steps.map((step, index) => renderExerciseStep(step, index)).join("")}
+            </div>
+            <div class="card">
+              <strong>Reflexion final</strong>
+              <p class="muted">${escapeHtml(session.solution.finalReflection || "Comprueba que cada paso tenga sentido antes de seguir al siguiente ejercicio.")}</p>
+            </div>
+          </section>
+        `
+        : ""}
+    </section>
+  `;
+}
+
 function renderPracticePage() {
-  const runtime = activeRuntimeStatus();
   const readiness = inferenceReadiness();
-  const provider = providerLabel();
-  const runtimeCopy = state.settings.inferenceProvider === "webllm"
-    ? "WebLLM corre dentro del renderer y carga el modelo en un worker con WebGPU."
-    : "Electron llama al API local de Ollama desde el proceso principal.";
-  const workflow = state.settings.inferenceProvider === "webllm"
-    ? "1. Se valida WebGPU. 2. WebLLM carga o reutiliza el modelo. 3. Se genera respuesta y se guarda XP."
-    : "1. Se arma el prompt. 2. Electron llama a Ollama. 3. Se actualiza el perfil con XP.";
 
   return `
     <div class="stack">
       <section class="hero-card">
         <div class="row">
           <div>
-            <h2>Estudio guiado con ${escapeHtml(provider)}</h2>
-            <p class="muted">${runtimeCopy}</p>
+            <h2>Estudio guiado con Ollama</h2>
+            <p class="muted">Primero clasifico la pregunta. Luego genero tarjetas de concepto o pasos guiados segun corresponda.</p>
           </div>
-          <span class="tag ${runtime.ok && !runtime.loading ? "good" : ""}">${escapeHtml(activeModelLabel() || "Sin modelo")}</span>
+          <span class="tag ${state.ollama.ok ? "good" : ""}">${escapeHtml(state.settings.currentModel || "Sin modelo")}</span>
         </div>
         <div class="row">
           ${Object.entries(modeLabels).map(([key, label]) => `
             <button class="chip-btn ${state.practiceMode === key ? "active" : ""}" data-action="practice-mode" data-mode="${key}">${label}</button>
           `).join("")}
         </div>
-        <p class="muted">${escapeHtml(runtime.message || readiness.reason || "")}</p>
+        <p class="muted">${escapeHtml(state.ollama.message || readiness.reason || "")}</p>
       </section>
       <section class="split">
         <div class="chat-card">
           <div class="chat-feed">
-            ${state.chatMessages.length
-              ? state.chatMessages.map((message) => `
-                  <div class="message ${message.role === "user" ? "user" : "bot"}">${formatRichText(message.text)}</div>
-                `).join("")
-              : `<div class="empty-state">Pregunta algo sobre matematicas. Las respuestas se renderizan con KaTeX y la app suma XP por practica.</div>`}
+            ${renderTranscript()}
             ${state.isThinking ? `<div class="typing"><span></span><span></span><span></span></div>` : ""}
           </div>
           ${!readiness.ready ? `<div class="empty-state">${escapeHtml(readiness.reason)}</div>` : ""}
           <form class="composer" data-form="chat">
-            <textarea id="chat-input" name="question" placeholder="Escribe una pregunta matematica en espanol..." ${(state.isThinking || !readiness.ready || state.webllm.loading) ? "disabled" : ""}></textarea>
-            <button class="btn primary" type="submit" ${(state.isThinking || !readiness.ready || state.webllm.loading) ? "disabled" : ""}>${state.webllm.loading && state.settings.inferenceProvider === "webllm" ? "Cargando..." : "Preguntar"}</button>
+            <textarea id="chat-input" name="question" placeholder="Escribe una duda de matematicas, un concepto o un ejercicio..." ${(state.isThinking || !readiness.ready) ? "disabled" : ""}></textarea>
+            <button class="btn primary" type="submit" ${(state.isThinking || !readiness.ready) ? "disabled" : ""}>Preguntar</button>
           </form>
         </div>
         <aside class="workflow-card stack">
           <div>
             <h3 style="margin-top:0;">Workflow activo</h3>
-            <p class="muted">${workflow}</p>
+            <p class="muted">1. Clasifico la pregunta. 2. Reviso si el concepto ya fue estudiado. 3. Genero tarjetas o pasos para completar.</p>
           </div>
-          <div class="card">
-            <strong>${escapeHtml(provider)} activo</strong>
-            <p class="muted">${escapeHtml(runtime.message || "Sin estado de runtime.")}</p>
+          ${renderSessionSummary()}
+          <div class="card stack">
+            <strong>Conceptos del estudiante</strong>
+            ${renderKnownConceptChips()}
           </div>
           ${[
-            "Explicame como comparar fracciones",
-            "Dame una pista para un problema de triangulos",
-            "Resuelve paso a paso una ecuacion simple"
+            "Explicame el concepto de fracciones equivalentes",
+            "Resuelve 3x + 5 = 20 paso a paso",
+            "Ayudame con un ejercicio de area de triangulos"
           ].map((prompt) => `
             <button class="btn secondary" data-action="quick-prompt" data-prompt="${escapeHtml(prompt)}">${escapeHtml(prompt)}</button>
           `).join("")}
         </aside>
       </section>
+      ${renderPracticeSession()}
     </div>
   `;
 }
@@ -699,6 +1004,7 @@ function renderProfilePage() {
   }
 
   const suggestion = currentSuggestion();
+  const conceptItems = knownConcepts(state.profile).slice(0, 8);
   const pathItems = flattenLessons(state.lessons).map((lesson) => {
     const done = currentCompletedSet().has(`${lesson.unit}::${lesson.title}`);
     const current = suggestion && suggestion.unit === lesson.unit && suggestion.title === lesson.title;
@@ -727,6 +1033,7 @@ function renderProfilePage() {
         <article class="stats-card"><p class="muted">Racha</p><strong>${summary.streakDays}</strong><span class="muted">dias seguidos</span></article>
         <article class="stats-card"><p class="muted">Lecciones</p><strong>${summary.lessonsCompleted}</strong><span class="muted">misiones cerradas</span></article>
         <article class="stats-card"><p class="muted">XP</p><strong>${summary.xp}</strong><span class="muted">experiencia total</span></article>
+        <article class="stats-card"><p class="muted">Conceptos</p><strong>${summary.knownConcepts}</strong><span class="muted">temas registrados</span></article>
       </section>
       <section class="profile-layout">
         <div class="path-card stack">
@@ -753,6 +1060,12 @@ function renderProfilePage() {
                 </div>
               `).join("")
             : `<div class="empty-state">Todavia no hay actividad guardada.</div>`}
+          <div class="card stack">
+            <strong>Conceptos registrados</strong>
+            ${conceptItems.length
+              ? conceptItems.map((item) => `<span class="tag ${item.status === "known" ? "good" : ""}">${escapeHtml(item.topic)}</span>`).join("")
+              : `<div class="empty-state">Aun no hay conceptos guardados.</div>`}
+          </div>
           <button class="btn secondary" data-action="reset-progress">Reiniciar progreso</button>
         </aside>
       </section>
@@ -823,10 +1136,6 @@ function renderOnboarding() {
 
 function renderSettingsModal() {
   const draft = cloneSettings();
-  const provider = draft.inferenceProvider;
-  const activeChoice = selectedWebLLMChoice(draft);
-  const webllmConfig = buildActiveWebLLMConfig(draft);
-  const readiness = inferenceReadiness(draft);
 
   return `
     <div class="modal">
@@ -834,78 +1143,34 @@ function renderSettingsModal() {
         <div class="modal-header">
           <div>
             <h3 style="margin:0;">Preferencias</h3>
-            <p class="muted">Selecciona el runtime local, el modelo activo y el modo por defecto.</p>
+            <p class="muted">Configura Ollama, selecciona el modelo activo y el modo por defecto.</p>
           </div>
           <button class="ghost-btn" data-action="close-settings">Cerrar</button>
         </div>
         <div class="stack">
-          <label>
-            <span class="muted">Motor de inferencia</span>
-            <select data-settings-field="inferenceProvider">
-              <option value="ollama" ${provider === "ollama" ? "selected" : ""}>Ollama</option>
-              <option value="webllm" ${provider === "webllm" ? "selected" : ""}>WebLLM</option>
-            </select>
-          </label>
-          ${provider === "ollama" ? `
-            <div class="card stack">
-              <div>
-                <strong>Ollama local</strong>
-                <p class="muted">Usa el proceso principal de Electron para llamar a /api/tags y /api/chat.</p>
-              </div>
-              <label>
-                <span class="muted">URL de Ollama</span>
-                <input data-settings-field="ollamaBaseUrl" value="${escapeHtml(draft.ollamaBaseUrl)}" />
-              </label>
-              <label>
-                <span class="muted">Modelo de Ollama</span>
-                <select data-settings-field="ollamaModel">
-                  <option value="">Selecciona un modelo</option>
-                  ${state.availableModels.map((model) => `
-                    <option value="${escapeHtml(model.name)}" ${draft.ollamaModel === model.name ? "selected" : ""}>${escapeHtml(model.name)}</option>
-                  `).join("")}
-                </select>
-              </label>
-              <p class="muted">${escapeHtml(state.ollama.message)}</p>
-              <div class="row">
-                <button class="btn secondary" data-action="refresh-models">Actualizar modelos</button>
-              </div>
+          <div class="card stack">
+            <div>
+              <strong>Ollama local</strong>
+              <p class="muted">Usa el proceso principal de Electron para llamar a /api/tags y /api/chat.</p>
             </div>
-          ` : ""}
-          ${provider === "webllm" ? `
-            <div class="card stack">
-              <div>
-                <strong>WebLLM local</strong>
-                <p class="muted">Usa WebGPU y un worker del renderer para ejecutar el modelo dentro de Electron.</p>
-              </div>
-              <p class="muted">${escapeHtml(state.webllm.supported ? "WebGPU disponible en este runtime." : "WebGPU no esta disponible. WebLLM no podra cargar modelos.")}</p>
-              <label>
-                <span class="muted">Modelo WebLLM</span>
-                <select data-settings-field="webllmModel">
-                  ${WEBLLM_CHOICES.map((choice) => `
-                    <option value="${escapeHtml(choice.modelId)}" ${draft.webllmModel === choice.modelId ? "selected" : ""}>
-                      ${escapeHtml(choice.label)}${choice.builtIn ? "" : " (custom)"}
-                    </option>
-                  `).join("")}
-                </select>
-              </label>
-              <p class="muted">${escapeHtml(activeChoice?.note || "Selecciona un preset de WebLLM o define un modelo MLC custom.")}</p>
-              ${isCustomWebLLMModel(draft.webllmModel) ? `
-                <label>
-                  <span class="muted">ID del modelo custom</span>
-                  <input data-settings-field="webllmCustomModelId" value="${escapeHtml(draft.webllmCustomModelId)}" />
-                </label>
-                <label>
-                  <span class="muted">URL del modelo MLC</span>
-                  <input data-settings-field="webllmCustomModelUrl" value="${escapeHtml(draft.webllmCustomModelUrl)}" placeholder="https://..." />
-                </label>
-                <label>
-                  <span class="muted">URL del model_lib wasm</span>
-                  <input data-settings-field="webllmCustomModelLibUrl" value="${escapeHtml(draft.webllmCustomModelLibUrl)}" placeholder="https://..." />
-                </label>
-              ` : ""}
-              <p class="muted">${escapeHtml(state.webllm.loading ? state.webllm.message : readiness.reason || webllmConfig.reason || state.webllm.message)}</p>
+            <label>
+              <span class="muted">URL de Ollama</span>
+              <input data-settings-field="ollamaBaseUrl" value="${escapeHtml(draft.ollamaBaseUrl)}" />
+            </label>
+            <label>
+              <span class="muted">Modelo de Ollama</span>
+              <select data-settings-field="currentModel">
+                <option value="">Selecciona un modelo</option>
+                ${state.availableModels.map((model) => `
+                  <option value="${escapeHtml(model.name)}" ${draft.currentModel === model.name ? "selected" : ""}>${escapeHtml(model.name)}</option>
+                `).join("")}
+              </select>
+            </label>
+            <p class="muted">${escapeHtml(state.ollama.message)}</p>
+            <div class="row">
+              <button class="btn secondary" data-action="refresh-models">Actualizar modelos</button>
             </div>
-          ` : ""}
+          </div>
           <label>
             <span class="muted">Modo de respuesta por defecto</span>
             <select data-settings-field="responseMode">
@@ -946,6 +1211,415 @@ function renderLoadingPanel() {
   `;
 }
 
+function buildFallbackClassifier(question = "") {
+  const text = String(question || "").toLowerCase();
+  const exercise = /(resuelve|resolver|ejercicio|ecuacion|calcula|halla|encuentra|resultado|simplifica|deriva|integra)/.test(text);
+
+  return {
+    kind: exercise ? "exercise" : "concept",
+    topic: question,
+    conceptTopic: question,
+    relatedTopics: [],
+    reason: exercise
+      ? "Se detecto lenguaje de resolucion o practica."
+      : "Se detecto una solicitud de explicacion conceptual."
+  };
+}
+
+function normalizeClassifierPayload(raw, question = "") {
+  const fallback = buildFallbackClassifier(question);
+  const kind = raw?.kind === "exercise" || raw?.kind === "concept" || raw?.kind === "non_math"
+    ? raw.kind
+    : fallback.kind;
+
+  return {
+    kind,
+    topic: String(raw?.topic || fallback.topic || question).trim() || question,
+    conceptTopic: String(raw?.conceptTopic || raw?.topic || fallback.conceptTopic || question).trim() || question,
+    relatedTopics: uniqueList(raw?.relatedTopics || fallback.relatedTopics || []),
+    reason: String(raw?.reason || fallback.reason || "Sin razon disponible.").trim()
+  };
+}
+
+function fallbackStudyDeck(question, classification) {
+  const concept = classification.conceptTopic || classification.topic || question;
+  return {
+    topic: concept,
+    focusTrail: uniqueList([concept]),
+    relatedTopics: uniqueList(classification.relatedTopics || []),
+    cards: [
+      {
+        id: `${slugify(concept)}-concept`,
+        kind: "concept",
+        title: `Idea clave de ${concept}`,
+        body: `Este concepto ayuda a responder la pregunta: ${question}. Empieza identificando que representa y cuando se usa.`,
+        checkPrompt: "Explicalo con tus palabras antes de seguir."
+      },
+      {
+        id: `${slugify(concept)}-example`,
+        kind: "example",
+        title: `Ejemplo de ${concept}`,
+        body: "Observa un ejemplo sencillo y compara cada paso con la idea principal.",
+        example: `Relaciona ${concept} con un caso pequeno y describe por que funciona.`,
+        prompt: "Que cambia y que permanece igual en el ejemplo?"
+      },
+      {
+        id: `${slugify(concept)}-game`,
+        kind: "game",
+        title: "Conecta ideas",
+        body: "Relaciona cada concepto con su descripcion. Esta tarjeta queda preparada para sumar otros tipos de juegos mas adelante.",
+        gameType: "match-pairs",
+        instructions: "Arrastra cada idea hacia su descripcion.",
+        pairs: [
+          { left: concept, right: "Idea central del tema" },
+          { left: "Ejemplo", right: "Caso concreto que muestra como aplicar la idea" },
+          { left: "Relacion", right: "Conexion entre definicion y uso" }
+        ]
+      }
+    ]
+  };
+}
+
+function normalizeStudyDeck(raw, question, classification) {
+  const fallback = fallbackStudyDeck(question, classification);
+  const cards = Array.isArray(raw?.cards) ? raw.cards : fallback.cards;
+
+  return {
+    topic: String(raw?.topic || fallback.topic).trim() || fallback.topic,
+    focusTrail: uniqueList(raw?.focusTrail || fallback.focusTrail),
+    relatedTopics: uniqueList(raw?.relatedTopics || classification.relatedTopics || fallback.relatedTopics),
+    cards: cards.map((card, index) => ({
+      id: slugify(card.id || `${raw?.topic || fallback.topic}-card-${index + 1}`) || `card-${index + 1}`,
+      kind: card.kind || (index === 0 ? "concept" : index === 1 ? "example" : "game"),
+      title: String(card.title || `Tarjeta ${index + 1}`).trim(),
+      body: String(card.body || "").trim(),
+      checkPrompt: String(card.checkPrompt || "").trim(),
+      example: String(card.example || "").trim(),
+      prompt: String(card.prompt || "").trim(),
+      gameType: card.gameType || "",
+      instructions: String(card.instructions || "").trim(),
+      pairs: Array.isArray(card.pairs)
+        ? card.pairs
+            .map((pair) => ({
+              left: String(pair?.left || "").trim(),
+              right: String(pair?.right || "").trim()
+            }))
+            .filter((pair) => pair.left && pair.right)
+        : []
+    }))
+  };
+}
+
+function fallbackExercisePlan(question, classification) {
+  const concept = classification.conceptTopic || classification.topic || question;
+  return {
+    topic: classification.topic || concept,
+    conceptTopic: concept,
+    exercise: question,
+    steps: [
+      {
+        id: `${slugify(question)}-step-1`,
+        title: "Identifica el dato clave",
+        prompt: "Escribe cual es la informacion principal que te da el ejercicio.",
+        acceptedAnswers: ["dato", "datos", "informacion", "variable"],
+        hint: "Busca numeros, relaciones o expresiones importantes.",
+        explanation: "Antes de resolver, conviene reconocer que informacion esta disponible."
+      },
+      {
+        id: `${slugify(question)}-step-2`,
+        title: "Elige la operacion o estrategia",
+        prompt: "Indica que operacion, propiedad o estrategia vas a usar.",
+        acceptedAnswers: [concept, "sumar", "restar", "multiplicar", "dividir", "despejar"],
+        hint: "Conecta el problema con el concepto principal.",
+        explanation: "La estrategia debe estar alineada con el concepto o propiedad que resuelve la situacion."
+      },
+      {
+        id: `${slugify(question)}-step-3`,
+        title: "Cierra la respuesta",
+        prompt: "Escribe como verificarias el resultado o que conclusion obtienes.",
+        acceptedAnswers: ["verificar", "comprobar", "respuesta", "resultado"],
+        hint: "Piensa si el resultado tiene sentido en el contexto del ejercicio.",
+        explanation: "Comprobar el resultado evita errores de signo, escala o interpretacion."
+      }
+    ],
+    finalReflection: "Repasa que concepto te permitio elegir la estrategia correcta."
+  };
+}
+
+function normalizeExercisePlan(raw, question, classification) {
+  const fallback = fallbackExercisePlan(question, classification);
+  const steps = Array.isArray(raw?.steps) ? raw.steps : fallback.steps;
+
+  return {
+    topic: String(raw?.topic || fallback.topic).trim() || fallback.topic,
+    conceptTopic: String(raw?.conceptTopic || fallback.conceptTopic).trim() || fallback.conceptTopic,
+    exercise: String(raw?.exercise || fallback.exercise).trim() || fallback.exercise,
+    steps: steps.map((step, index) => ({
+      id: slugify(step.id || `${fallback.topic}-step-${index + 1}`) || `step-${index + 1}`,
+      title: String(step.title || `Paso ${index + 1}`).trim(),
+      prompt: String(step.prompt || "").trim(),
+      acceptedAnswers: uniqueList(step.acceptedAnswers || []).map((item) => item.trim()).filter(Boolean),
+      hint: String(step.hint || "").trim(),
+      explanation: String(step.explanation || "").trim()
+    })),
+    finalReflection: String(raw?.finalReflection || fallback.finalReflection).trim()
+  };
+}
+
+function buildGameState(deck) {
+  const gameState = {};
+
+  for (const card of deck.cards || []) {
+    if (card.kind !== "game" || card.gameType !== "match-pairs" || !card.pairs.length) {
+      continue;
+    }
+
+    const pairs = card.pairs.map((pair, index) => ({
+      leftId: `${card.id}-left-${index + 1}`,
+      left: pair.left,
+      optionId: `${card.id}-option-${index + 1}`,
+      right: pair.right
+    }));
+
+    gameState[card.id] = {
+      gameType: "match-pairs",
+      pairs,
+      options: shuffle(pairs.map((pair) => ({
+        id: pair.optionId,
+        text: pair.right
+      }))),
+      placements: {},
+      completed: false,
+      feedback: ""
+    };
+  }
+
+  return gameState;
+}
+
+function preparePracticeSession({ kind, classification, deck = null, solution = null, reusedConcept = false }) {
+  return {
+    kind,
+    topic: classification.topic,
+    conceptTopic: classification.conceptTopic,
+    reason: classification.reason,
+    relatedTopics: classification.relatedTopics,
+    deck,
+    solution,
+    reusedConcept,
+    gameState: deck ? buildGameState(deck) : {},
+    stepInputs: {},
+    stepResults: {},
+    openHints: {}
+  };
+}
+
+async function persistConceptStudy({ topic, relatedTopics = [], status = "studying", source = "study-card" }) {
+  state.profile = trackConceptStudy(state.profile, {
+    topic,
+    relatedTopics,
+    status,
+    source
+  });
+  await window.bridge.saveProfile(state.profile);
+}
+
+async function maybeMarkCurrentConceptKnown() {
+  const session = state.practiceSession;
+  if (!session?.conceptTopic) return;
+
+  state.profile = trackConceptStudy(state.profile, {
+    topic: session.conceptTopic,
+    relatedTopics: session.relatedTopics,
+    status: "known",
+    source: session.kind === "exercise" ? "exercise-step" : "game-complete"
+  });
+  await window.bridge.saveProfile(state.profile);
+  render();
+}
+
+async function generateStudyDeck(question, classification) {
+  const concepts = knownConcepts(state.profile).map((item) => item.topic);
+  const answer = await askWithOllama([
+    { role: "system", content: studyDeckPrompt },
+    {
+      role: "user",
+      content: buildStudyDeckUserPrompt({
+        question,
+        topic: classification.topic,
+        conceptTopic: classification.conceptTopic,
+        relatedTopics: classification.relatedTopics,
+        knownConcepts: concepts
+      })
+    }
+  ]);
+
+  return normalizeStudyDeck(safeJsonParse(answer, {}), question, classification);
+}
+
+async function generateExercisePlan(question, classification) {
+  const concepts = knownConcepts(state.profile).map((item) => item.topic);
+  const answer = await askWithOllama([
+    { role: "system", content: exerciseTutorPrompt },
+    {
+      role: "user",
+      content: buildExerciseTutorUserPrompt({
+        question,
+        topic: classification.topic,
+        conceptTopic: classification.conceptTopic,
+        relatedTopics: classification.relatedTopics,
+        knownConcepts: concepts,
+        mode: state.practiceMode
+      })
+    }
+  ]);
+
+  return normalizeExercisePlan(safeJsonParse(answer, {}), question, classification);
+}
+
+async function handleStudyQuestion(question) {
+  const registeredConcepts = knownConcepts(state.profile).map((item) => item.topic);
+  const classificationText = await askWithOllama([
+    { role: "system", content: studyClassifierPrompt },
+    { role: "user", content: buildClassifierUserPrompt(question, registeredConcepts) }
+  ]);
+  const classification = normalizeClassifierPayload(safeJsonParse(classificationText, {}), question);
+
+  if (classification.kind === "non_math") {
+    state.practiceSession = preparePracticeSession({
+      kind: "non_math",
+      classification,
+      reusedConcept: false
+    });
+    state.chatMessages.push({
+      role: "bot",
+      text: "Esto no parece una pregunta de matematicas, asi que no active las tarjetas ni la practica guiada."
+    });
+    return;
+  }
+
+  if (classification.kind === "concept") {
+    const deck = await generateStudyDeck(question, classification);
+    state.practiceSession = preparePracticeSession({
+      kind: "concept",
+      classification,
+      deck
+    });
+    state.chatMessages.push({
+      role: "bot",
+      text: `Detecte una duda de concepto sobre ${deck.topic}. Te prepare tarjetas de estudio con explicacion, ejemplo y un juego para conectar ideas.`
+    });
+    await persistConceptStudy({
+      topic: deck.topic,
+      relatedTopics: deck.relatedTopics,
+      status: "studying",
+      source: "concept-deck"
+    });
+    return;
+  }
+
+  const conceptTopic = classification.conceptTopic || classification.topic;
+  const reusedConcept = hasStudiedConcept(state.profile, conceptTopic)
+    || classification.relatedTopics.some((topic) => hasStudiedConcept(state.profile, topic));
+  const deck = reusedConcept ? null : await generateStudyDeck(question, classification);
+  const solution = await generateExercisePlan(question, classification);
+
+  state.practiceSession = preparePracticeSession({
+    kind: "exercise",
+    classification,
+    deck,
+    solution,
+    reusedConcept
+  });
+  state.chatMessages.push({
+    role: "bot",
+    text: reusedConcept
+      ? `Detecte un ejercicio sobre ${classification.topic}. Como ya habia memoria previa para ${conceptTopic}, fui directo a la solucion guiada por pasos.`
+      : `Detecte un ejercicio sobre ${classification.topic}. Primero te prepare las tarjetas del concepto ${conceptTopic} y luego una solucion paso a paso para completar.`
+  });
+
+  if (deck) {
+    await persistConceptStudy({
+      topic: deck.topic,
+      relatedTopics: deck.relatedTopics,
+      status: "studying",
+      source: "exercise-bridge"
+    });
+  }
+}
+
+async function runTextExplanation() {
+  if (!state.selectedText || !inferenceReadiness().ready) return;
+
+  state.explanation = { open: true, busy: true, cards: [] };
+  state.lessonUi.contextMenu = { ...state.lessonUi.contextMenu, open: false };
+  syncLessonUi();
+
+  try {
+    const answer = await askWithOllama([
+      { role: "system", content: explainPrompt },
+      { role: "user", content: buildExplainUserPrompt(state.selectedText) }
+    ]);
+    state.explanation = {
+      open: true,
+      busy: false,
+      cards: parseExplanationCards(answer, state.selectedText)
+    };
+  } catch (error) {
+    state.explanation = {
+      open: true,
+      busy: false,
+      cards: fallbackExplanationCards(`[Error] ${error.message}`, state.selectedText)
+    };
+  }
+
+  syncLessonUi();
+}
+
+async function runImageExplanation() {
+  if (!state.lessonUi.cropRect || !currentModelSupportsVision() || !inferenceReadiness().ready) return;
+
+  const frame = document.getElementById("lesson-frame");
+  if (!frame) return;
+
+  state.explanation = { open: true, busy: true, cards: [] };
+  state.lessonUi.cropAction = { ...state.lessonUi.cropAction, open: false };
+  syncLessonUi();
+
+  try {
+    const frameBounds = frame.getBoundingClientRect();
+    const capture = await window.bridge.captureRegion({
+      x: frameBounds.left + state.lessonUi.cropRect.x,
+      y: frameBounds.top + state.lessonUi.cropRect.y,
+      width: state.lessonUi.cropRect.width,
+      height: state.lessonUi.cropRect.height
+    });
+
+    const answer = await askWithOllama([
+      { role: "system", content: visionExplainPrompt },
+      {
+        role: "user",
+        content: buildExplainImageUserPrompt(),
+        images: [capture.base64]
+      }
+    ]);
+
+    state.explanation = {
+      open: true,
+      busy: false,
+      cards: parseExplanationCards(answer, "Recorte visual")
+    };
+  } catch (error) {
+    state.explanation = {
+      open: true,
+      busy: false,
+      cards: fallbackExplanationCards(`[Error] ${error.message}`, "Recorte visual")
+    };
+  }
+
+  syncLessonUi();
+}
+
 function handleInput(event) {
   const target = event.target;
 
@@ -958,10 +1632,16 @@ function handleInput(event) {
       ...(state.settingsDraft || state.settings),
       [target.dataset.settingsField]: target.value
     }, state.availableModels);
+  }
 
-    if (target.tagName === "SELECT") {
-      render();
-    }
+  if (target.dataset.stepInputId && state.practiceSession) {
+    state.practiceSession = {
+      ...state.practiceSession,
+      stepInputs: {
+        ...(state.practiceSession.stepInputs || {}),
+        [target.dataset.stepInputId]: target.value
+      }
+    };
   }
 }
 
@@ -971,7 +1651,7 @@ async function handleSubmit(event) {
 
   const question = event.target.question.value.trim();
   const readiness = inferenceReadiness();
-  if (!question || state.isThinking || !readiness.ready || state.webllm.loading) return;
+  if (!question || state.isThinking || !readiness.ready) return;
 
   event.target.reset();
   state.chatMessages.push({ role: "user", text: question });
@@ -979,11 +1659,7 @@ async function handleSubmit(event) {
   render();
 
   try {
-    const answer = await askModel([
-      { role: "system", content: buildSystemPrompt(state.practiceMode) },
-      { role: "user", content: question }
-    ]);
-    state.chatMessages.push({ role: "bot", text: answer || "(sin respuesta)" });
+    await handleStudyQuestion(question);
     state.profile = addPracticeXp(state.profile, 1);
     await window.bridge.saveProfile(state.profile);
   } catch (error) {
@@ -996,7 +1672,12 @@ async function handleSubmit(event) {
 
 async function handleClick(event) {
   const button = event.target.closest("[data-action]");
-  if (!button) return;
+  if (!button) {
+    if (closeLessonMenus()) {
+      syncLessonUi();
+    }
+    return;
+  }
 
   const action = button.dataset.action;
 
@@ -1015,8 +1696,7 @@ async function handleClick(event) {
       state.selectedUnit = button.dataset.unit;
       state.currentLesson = lesson;
       state.stageIndex = 0;
-      state.selectedText = "";
-      state.explanation = { open: false, busy: false, cards: [] };
+      resetLessonAssistState();
       state.page = "lessons";
     }
   }
@@ -1024,18 +1704,17 @@ async function handleClick(event) {
   if (action === "close-lesson") {
     state.currentLesson = null;
     state.stageIndex = 0;
-    state.selectedText = "";
-    state.explanation = { open: false, busy: false, cards: [] };
+    resetLessonAssistState();
   }
 
   if (action === "lesson-prev" && state.stageIndex > 0) {
     state.stageIndex -= 1;
-    state.selectedText = "";
+    resetLessonAssistState();
   }
 
   if (action === "lesson-next" && state.currentLesson) {
     state.stageIndex = Math.min(state.stageIndex + 1, state.currentLesson.stages.length - 1);
-    state.selectedText = "";
+    resetLessonAssistState();
   }
 
   if (action === "lesson-finish" && state.currentLesson) {
@@ -1043,6 +1722,7 @@ async function handleClick(event) {
     await window.bridge.saveProfile(state.profile);
     state.currentLesson = null;
     state.stageIndex = 0;
+    resetLessonAssistState();
   }
 
   if (action === "practice-mode") {
@@ -1066,6 +1746,7 @@ async function handleClick(event) {
         state.selectedUnit = suggestion.unit;
         state.currentLesson = lesson;
         state.stageIndex = 0;
+        resetLessonAssistState();
         state.page = "lessons";
       }
     }
@@ -1139,24 +1820,15 @@ async function handleClick(event) {
 
   if (action === "save-settings" && state.settingsDraft) {
     const nextSettings = normalizeSettings(state.settingsDraft, state.availableModels);
-    const providerChanged = nextSettings.inferenceProvider !== state.settings.inferenceProvider;
-    const modelChanged = activeModelId(nextSettings) !== activeModelId(state.settings);
-    const shouldResetWebLLM =
-      providerChanged ||
-      webllmSignature(nextSettings) !== webllmSignature(state.settings);
-    const shouldShowLoading = providerChanged || modelChanged;
+    const modelChanged = nextSettings.currentModel !== state.settings.currentModel;
+    const urlChanged = nextSettings.ollamaBaseUrl !== state.settings.ollamaBaseUrl;
+    const shouldShowLoading = modelChanged || urlChanged;
 
     if (shouldShowLoading) {
       openLoadingPanel({
         title: "Preparando el modelo",
-        detail: nextSettings.inferenceProvider === "webllm"
-          ? `Espera un momento mientras cargo ${activeModelLabel(nextSettings)}.`
-          : `Espera un momento mientras preparo ${activeModelLabel(nextSettings) || "la sesion"} en Ollama.`
+        detail: `Espera un momento mientras preparo ${nextSettings.currentModel || "la sesion"} en Ollama.`
       });
-    }
-
-    if (shouldResetWebLLM) {
-      await teardownWebLLMEngine(true);
     }
 
     state.settings = nextSettings;
@@ -1165,41 +1837,134 @@ async function handleClick(event) {
     state.settingsOpen = false;
     state.settingsDraft = null;
 
-    if (state.settings.inferenceProvider === "webllm" && inferenceReadiness().ready) {
-      try {
-        await ensureWebLLMEngine();
-      } catch {
-        closeLoadingPanel();
-      }
-    } else if (state.settings.inferenceProvider === "webllm" && shouldShowLoading) {
-      await sleep(500);
-      closeLoadingPanel();
-    } else if (shouldShowLoading) {
+    if (shouldShowLoading) {
       await refreshOllamaModels(state.settings.ollamaBaseUrl);
       await sleep(650);
       closeLoadingPanel();
     }
   }
 
-  if (action === "explain-selection" && state.selectedText && inferenceReadiness().ready) {
-    state.explanation = { open: true, busy: true, cards: [] };
-    render();
-    try {
-      const answer = await askModel([
-        { role: "system", content: explainPrompt },
-        { role: "user", content: buildExplainUserPrompt(state.selectedText) }
-      ]);
-      state.explanation = {
-        open: true,
-        busy: false,
-        cards: parseExplanationCards(answer, state.selectedText)
+  if (action === "toggle-crop-mode" && currentModelSupportsVision()) {
+    const nextMode = !state.lessonUi.cropMode;
+    closeLessonMenus({ clearCrop: !nextMode });
+    state.lessonUi.cropMode = nextMode;
+    syncLessonUi();
+    return;
+  }
+
+  if (action === "clear-crop") {
+    closeLessonMenus({ clearCrop: true });
+    syncLessonUi();
+    return;
+  }
+
+  if (action === "explain-selection") {
+    await runTextExplanation();
+    return;
+  }
+
+  if (action === "ask-image-selection") {
+    await runImageExplanation();
+    return;
+  }
+
+  if (action === "remove-match" && state.practiceSession) {
+    const game = state.practiceSession.gameState?.[button.dataset.gameId];
+    if (game) {
+      delete game.placements[button.dataset.leftId];
+      game.feedback = "";
+      game.completed = false;
+      render();
+      return;
+    }
+  }
+
+  if (action === "toggle-step-hint" && state.practiceSession) {
+    const stepId = button.dataset.stepId;
+    const openHints = {
+      ...(state.practiceSession.openHints || {}),
+      [stepId]: !state.practiceSession.openHints?.[stepId]
+    };
+    state.practiceSession = { ...state.practiceSession, openHints };
+  }
+
+  if (action === "check-step" && state.practiceSession?.solution) {
+    const step = state.practiceSession.solution.steps.find((item) => item.id === button.dataset.stepId);
+    if (step) {
+      const value = state.practiceSession.stepInputs?.[step.id] || "";
+      const normalizedValue = normalizeLooseAnswer(value);
+      const accepted = (step.acceptedAnswers || []).some((answer) => normalizeLooseAnswer(answer) === normalizedValue);
+      const stepResults = {
+        ...(state.practiceSession.stepResults || {}),
+        [step.id]: accepted
+          ? { correct: true, message: "Bien. Ya puedes pasar al siguiente paso." }
+          : { correct: false, message: "Todavia no coincide. Usa la pista o reformula la idea principal." }
       };
-    } catch (error) {
-      state.explanation = {
-        open: true,
-        busy: false,
-        cards: fallbackExplanationCards(`[Error] ${error.message}`, state.selectedText)
-      };
+      state.practiceSession = { ...state.practiceSession, stepResults };
+
+      const allCorrect = state.practiceSession.solution.steps.every((item) => stepResults[item.id]?.correct);
+      if (allCorrect) {
+        await maybeMarkCurrentConceptKnown();
+        return;
+      }
+    }
+  }
+
+  render();
+}
+
+function handleDragStart(event) {
+  const chip = event.target.closest("[data-game-option-id]");
+  if (!chip) return;
+
+  const payload = JSON.stringify({
+    gameId: chip.dataset.gameId,
+    optionId: chip.dataset.gameOptionId
+  });
+  event.dataTransfer.setData("text/plain", payload);
+  event.dataTransfer.effectAllowed = "move";
+}
+
+function handleDragOver(event) {
+  const dropzone = event.target.closest("[data-dropzone='match']");
+  if (!dropzone) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+}
+
+async function handleDrop(event) {
+  const dropzone = event.target.closest("[data-dropzone='match']");
+  if (!dropzone || !state.practiceSession) return;
+
+  event.preventDefault();
+  let payload = null;
+
+  try {
+    payload = JSON.parse(event.dataTransfer.getData("text/plain"));
+  } catch {
+    payload = null;
+  }
+
+  if (!payload?.gameId || !payload?.optionId || payload.gameId !== dropzone.dataset.gameId) {
+    return;
+  }
+
+  const game = state.practiceSession.gameState?.[payload.gameId];
+  if (!game) return;
+
+  game.placements[dropzone.dataset.leftId] = payload.optionId;
+
+  const hasAllPlacements = game.pairs.every((pair) => game.placements[pair.leftId]);
+  if (hasAllPlacements) {
+    const correct = game.pairs.every((pair) => game.placements[pair.leftId] === pair.optionId);
+    game.completed = correct;
+    game.feedback = correct
+      ? "Relacionaste correctamente todos los conceptos."
+      : "Hay algunas conexiones que no coinciden. Ajustalas y vuelve a intentarlo.";
+
+    if (correct) {
+      await maybeMarkCurrentConceptKnown();
+      return;
     }
   }
 
@@ -1224,160 +1989,16 @@ async function refreshOllamaModels(baseUrl) {
   }
 }
 
-async function askModel(messages) {
-  if (state.settings.inferenceProvider === "webllm") {
-    return askWithWebLLM(messages);
-  }
-  return askWithOllama(messages);
-}
-
 async function askWithOllama(messages) {
-  if (!state.settings.ollamaModel) {
+  if (!state.settings.currentModel) {
     throw new Error("Selecciona un modelo de Ollama.");
   }
 
   return window.bridge.chat({
     baseUrl: state.settings.ollamaBaseUrl,
-    model: state.settings.ollamaModel,
+    model: state.settings.currentModel,
     messages
   });
-}
-
-async function ensureWebLLMEngine() {
-  if (!state.webllm.supported) {
-    throw new Error("WebGPU no esta disponible en este runtime.");
-  }
-
-  const config = buildActiveWebLLMConfig(state.settings);
-  if (!config.ok) {
-    throw new Error(config.reason);
-  }
-
-  if (webllmRuntime.engine && webllmRuntime.signature === config.signature) {
-    return webllmRuntime.engine;
-  }
-
-  await teardownWebLLMEngine(false);
-  openLoadingPanel({
-    title: "Cargando modelo local",
-    detail: `${activeModelLabel()} necesita unos segundos para despertar en WebLLM.`
-  });
-
-  state.webllm = {
-    ...state.webllm,
-    loading: true,
-    ok: true,
-    message: `Cargando ${activeModelLabel()}...`,
-    progress: "",
-    loadedModel: ""
-  };
-  render();
-
-  const worker = new Worker(new URL("./workers/webllm-worker.mjs", import.meta.url), { type: "module" });
-
-  try {
-    const engine = await CreateWebWorkerMLCEngine(worker, config.selectedModel, {
-      appConfig: config.appConfig,
-      initProgressCallback: (report) => {
-        const percent = typeof report.progress === "number" ? `${Math.round(report.progress * 100)}%` : "";
-        state.webllm = {
-          ...state.webllm,
-          loading: true,
-          ok: true,
-          message: [report.text, percent].filter(Boolean).join(" ") || `Cargando ${config.selectedModel}...`,
-          progress: percent
-        };
-        updateLoadingPanel({
-          detail: [report.text, percent].filter(Boolean).join(" ") || `Cargando ${config.selectedModel}...`
-        });
-        render();
-      }
-    });
-
-    webllmRuntime = {
-      engine,
-      worker,
-      signature: config.signature
-    };
-
-    state.webllm = {
-      ...state.webllm,
-      loading: false,
-      ok: true,
-      message: `${activeModelLabel()} listo para inferencia local.`,
-      progress: "",
-      loadedModel: config.selectedModel
-    };
-    updateLoadingPanel({
-      title: "Modelo listo",
-      detail: `${activeModelLabel()} ya esta preparado.`
-    });
-    await sleep(450);
-    closeLoadingPanel();
-    render();
-    return engine;
-  } catch (error) {
-    worker.terminate();
-    state.webllm = {
-      ...state.webllm,
-      loading: false,
-      ok: false,
-      message: error.message || "No se pudo cargar WebLLM.",
-      progress: "",
-      loadedModel: ""
-    };
-    updateLoadingPanel({
-      title: "No se pudo cargar el modelo",
-      detail: error.message || "No se pudo cargar WebLLM."
-    });
-    await sleep(1200);
-    closeLoadingPanel();
-    render();
-    throw error;
-  }
-}
-
-async function teardownWebLLMEngine(resetState = false) {
-  const runtime = webllmRuntime;
-  webllmRuntime = { engine: null, worker: null, signature: "" };
-
-  if (runtime.engine?.unload) {
-    try {
-      await runtime.engine.unload();
-    } catch {
-      // Ignore unload failures; the worker will still be terminated.
-    }
-  }
-
-  if (runtime.worker) {
-    runtime.worker.terminate();
-  }
-
-  if (resetState) {
-    state.webllm = createWebLLMState();
-  }
-}
-
-function extractAssistantText(content) {
-  if (typeof content === "string") {
-    return content.trim();
-  }
-
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => (typeof part === "string" ? part : part?.text || ""))
-      .join("\n")
-      .trim();
-  }
-
-  return "";
-}
-
-async function askWithWebLLM(messages) {
-  const engine = await ensureWebLLMEngine();
-  await engine.resetChat?.();
-  const response = await engine.chat.completions.create({ messages });
-  return extractAssistantText(response.choices?.[0]?.message?.content);
 }
 
 function wireLessonFrame() {
@@ -1386,16 +2007,115 @@ function wireLessonFrame() {
 
   frame.srcdoc = decodeURIComponent(frame.dataset.srcdoc);
   frame.addEventListener("load", () => {
-    const updateSelection = () => {
-      state.selectedText = frame.contentWindow?.getSelection?.().toString().trim() || "";
-      const explainButton = document.querySelector('[data-action="explain-selection"]');
-      if (explainButton) {
-        explainButton.disabled = !state.selectedText;
-      }
+    const doc = frame.contentDocument;
+    const win = frame.contentWindow;
+    const shell = document.getElementById("lesson-frame-shell");
+    if (!doc || !win || !shell) return;
+
+    const syncCropCursor = () => {
+      doc.documentElement.classList.toggle("crop-mode", state.lessonUi.cropMode);
+      doc.body.classList.toggle("crop-mode", state.lessonUi.cropMode);
     };
 
-    frame.contentDocument?.addEventListener("mouseup", updateSelection);
-    frame.contentDocument?.addEventListener("keyup", updateSelection);
+    const updateSelection = () => {
+      state.selectedText = win.getSelection?.().toString().trim() || "";
+    };
+
+    const pointInShell = (clientX, clientY) => ({
+      x: clamp(clientX, 0, shell.clientWidth),
+      y: clamp(clientY, 0, shell.clientHeight)
+    });
+
+    const openContextMenu = (clientX, clientY) => {
+      state.lessonUi.contextMenu = {
+        open: true,
+        x: clamp(clientX + 10, 10, Math.max(10, shell.clientWidth - 220)),
+        y: clamp(clientY + 10, 10, Math.max(10, shell.clientHeight - 80))
+      };
+      state.lessonUi.cropAction = { ...state.lessonUi.cropAction, open: false };
+      syncLessonUi();
+    };
+
+    const finalizeCrop = (clientX, clientY) => {
+      const start = state.lessonUi.dragStart;
+      state.lessonUi.dragStart = null;
+      if (!start) return;
+
+      const end = pointInShell(clientX, clientY);
+      const rect = {
+        x: Math.min(start.x, end.x),
+        y: Math.min(start.y, end.y),
+        width: Math.abs(end.x - start.x),
+        height: Math.abs(end.y - start.y)
+      };
+
+      if (rect.width < 24 || rect.height < 24) {
+        closeLessonMenus({ clearCrop: true });
+        syncCropCursor();
+        syncLessonUi();
+        return;
+      }
+
+      state.lessonUi.cropMode = false;
+      state.lessonUi.cropRect = rect;
+      state.lessonUi.cropAction = {
+        open: currentModelSupportsVision(),
+        x: clamp(rect.x + rect.width - 120, 10, Math.max(10, shell.clientWidth - 180)),
+        y: clamp(rect.y + rect.height + 12, 10, Math.max(10, shell.clientHeight - 80))
+      };
+      syncCropCursor();
+      syncLessonUi();
+    };
+
+    doc.addEventListener("mouseup", updateSelection);
+    doc.addEventListener("keyup", updateSelection);
+    doc.addEventListener("contextmenu", (event) => {
+      updateSelection();
+      if (!state.selectedText) return;
+      event.preventDefault();
+      openContextMenu(event.clientX, event.clientY);
+    });
+    doc.addEventListener("mousedown", (event) => {
+      if (!state.lessonUi.cropMode || event.button !== 0) return;
+      event.preventDefault();
+      const point = pointInShell(event.clientX, event.clientY);
+      state.lessonUi.dragStart = point;
+      state.lessonUi.cropRect = { x: point.x, y: point.y, width: 1, height: 1 };
+      state.lessonUi.cropAction = { ...state.lessonUi.cropAction, open: false };
+      syncLessonUi();
+    });
+    doc.addEventListener("mousemove", (event) => {
+      if (!state.lessonUi.cropMode || !state.lessonUi.dragStart) return;
+      event.preventDefault();
+      const end = pointInShell(event.clientX, event.clientY);
+      const start = state.lessonUi.dragStart;
+      state.lessonUi.cropRect = {
+        x: Math.min(start.x, end.x),
+        y: Math.min(start.y, end.y),
+        width: Math.abs(end.x - start.x),
+        height: Math.abs(end.y - start.y)
+      };
+      syncLessonUi();
+    });
+    doc.addEventListener("mouseup", (event) => {
+      if (!state.lessonUi.cropMode || !state.lessonUi.dragStart) return;
+      event.preventDefault();
+      finalizeCrop(event.clientX, event.clientY);
+    });
+    win.addEventListener("scroll", () => {
+      state.lessonUi.scroll = { x: win.scrollX, y: win.scrollY };
+      state.lessonUi.contextMenu = { ...state.lessonUi.contextMenu, open: false };
+      if (state.lessonUi.cropAction.open) {
+        state.lessonUi.cropAction = { ...state.lessonUi.cropAction, open: false };
+      }
+      syncLessonUi();
+    }, { passive: true });
+
+    syncCropCursor();
+    if (state.lessonUi.scroll.x || state.lessonUi.scroll.y) {
+      win.scrollTo(state.lessonUi.scroll.x, state.lessonUi.scroll.y);
+    }
+    syncLessonUi();
   }, { once: true });
 }
 
