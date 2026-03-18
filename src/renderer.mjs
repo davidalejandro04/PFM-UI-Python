@@ -10,7 +10,8 @@ import {
   recordLessonCompletion,
   resetProgress,
   setupProfile,
-  trackConceptStudy
+  trackConceptStudy,
+  trackStruggleSignal
 } from "./utils/profile.mjs";
 import {
   completionRatio,
@@ -99,6 +100,32 @@ const VISION_MODEL_PATTERNS = [
   "granite-vision"
 ];
 
+const VALIDATION_STOPWORDS = new Set([
+  "a",
+  "al",
+  "con",
+  "de",
+  "del",
+  "el",
+  "en",
+  "es",
+  "esta",
+  "este",
+  "hay",
+  "la",
+  "las",
+  "lo",
+  "los",
+  "para",
+  "por",
+  "que",
+  "se",
+  "su",
+  "un",
+  "una",
+  "y"
+]);
+
 const state = {
   lessons: [],
   profile: migrateProfile(defaultProfile),
@@ -130,8 +157,13 @@ const state = {
   selectedText: "",
   scrollTarget: null,
   studentPanel: {
+    compact: false,
     navigationOpen: true,
     profileOpen: false
+  },
+  exerciseOverlay: {
+    open: false,
+    index: 0
   },
   lessonUi: {
     scroll: { x: 0, y: 0 },
@@ -145,7 +177,7 @@ const state = {
   loadingPanel: {
     open: true,
     title: "Preparando TutorMate",
-    detail: "Un momento. Estoy acomodando tus lecciones y conectando Ollama."
+    detail: "Un momento. Estoy acomodando tus lecciones y preparando el tutor local."
   }
 };
 
@@ -224,6 +256,78 @@ function safeJsonParse(text = "", fallback = null) {
   } catch {
     return fallback;
   }
+}
+
+function validationTokens(value = "") {
+  return uniqueList(
+    stripAccents(value)
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .map((item) => item.trim())
+      .filter((item) => item.length > 1 && !VALIDATION_STOPWORDS.has(item))
+  );
+}
+
+function overlapRatio(tokens = [], reference = []) {
+  if (!tokens.length || !reference.length) return 0;
+  const tokenSet = new Set(tokens);
+  const matches = reference.filter((token) => tokenSet.has(token)).length;
+  return matches / reference.length;
+}
+
+function numericTokenRatio(tokens = [], reference = []) {
+  const referenceNumbers = reference.filter((token) => /\d/.test(token));
+  if (!referenceNumbers.length) return 0;
+  return overlapRatio(tokens, referenceNumbers);
+}
+
+function evaluateStepAnswer(step, answer = "") {
+  const trimmed = String(answer || "").trim();
+  if (!trimmed || trimmed.length < 3) {
+    return { result: "ambiguous", confidence: 0 };
+  }
+
+  const normalizedValue = normalizeLooseAnswer(trimmed);
+  const normalizedAccepted = uniqueList(step.acceptedAnswers || [])
+    .map((item) => normalizeLooseAnswer(item))
+    .filter(Boolean);
+
+  const exactMatch = normalizedAccepted.some((accepted) => accepted && normalizedValue === accepted);
+  const containedMatch = normalizedAccepted.some((accepted) => {
+    if (!accepted) return false;
+    return normalizedValue.includes(accepted) || (normalizedValue.length >= 5 && accepted.includes(normalizedValue));
+  });
+  if (exactMatch || containedMatch) {
+    return { result: "correct", confidence: 1 };
+  }
+
+  const answerTokens = validationTokens(trimmed);
+  const acceptedTokenSets = (step.acceptedAnswers || [])
+    .map((item) => validationTokens(item))
+    .filter((tokens) => tokens.length);
+  const promptTokens = validationTokens(`${step.title || ""} ${step.prompt || ""}`);
+  const bestAcceptedOverlap = acceptedTokenSets.length
+    ? Math.max(...acceptedTokenSets.map((tokens) => overlapRatio(answerTokens, tokens)))
+    : 0;
+  const promptOverlap = overlapRatio(answerTokens, promptTokens);
+  const bestNumericOverlap = acceptedTokenSets.length
+    ? Math.max(...acceptedTokenSets.map((tokens) => numericTokenRatio(answerTokens, tokens)))
+    : 0;
+
+  if (bestAcceptedOverlap >= 0.72) {
+    return { result: "correct", confidence: bestAcceptedOverlap };
+  }
+
+  if (bestAcceptedOverlap >= 0.45 && (promptOverlap >= 0.35 || bestNumericOverlap >= 0.5)) {
+    return { result: "correct", confidence: Math.max(bestAcceptedOverlap, promptOverlap) };
+  }
+
+  if (bestAcceptedOverlap >= 0.28 || promptOverlap >= 0.25 || bestNumericOverlap >= 0.5) {
+    return { result: "ambiguous", confidence: Math.max(bestAcceptedOverlap, promptOverlap, bestNumericOverlap) };
+  }
+
+  return { result: "incorrect", confidence: Math.max(bestAcceptedOverlap, promptOverlap, bestNumericOverlap) };
 }
 
 function uniqueList(values = []) {
@@ -331,7 +435,7 @@ function renderExplanationCards(cards = []) {
 function inferenceReadiness(settings = state.settings) {
   return {
     ready: Boolean(settings.currentModel),
-    reason: settings.currentModel ? "" : "Selecciona un modelo de Ollama."
+    reason: settings.currentModel ? "" : "Activa tu tutor local desde Configuracion LLM."
   };
 }
 
@@ -353,7 +457,7 @@ function cloneSettings(source = state.settingsDraft || state.settings) {
 function openLoadingPanel({ title, detail }) {
   state.loadingPanel = {
     open: true,
-    title: title || "Cargando modelo",
+    title: title || "Preparando tutor local",
     detail: detail || "Estoy preparando tu tutor local."
   };
   render();
@@ -371,7 +475,7 @@ function closeLoadingPanel() {
 async function bootstrap() {
   openLoadingPanel({
     title: "Preparando TutorMate",
-    detail: "Estoy revisando tus lecciones y conectando Ollama local."
+    detail: "Estoy revisando tus lecciones y preparando el tutor local."
   });
 
   const payload = await window.bridge.bootstrap();
@@ -547,6 +651,26 @@ function closeFlashcards() {
   };
 }
 
+function maxExerciseOverlayIndex(session = state.practiceSession) {
+  if (!session?.solution?.steps?.length) return 0;
+  return clamp(Number(session.currentStepIndex || 0), 0, session.solution.steps.length);
+}
+
+function openExerciseOverlay(index = maxExerciseOverlayIndex()) {
+  if (!state.practiceSession?.solution) return;
+  state.exerciseOverlay = {
+    open: true,
+    index: clamp(index, 0, state.practiceSession.solution.steps.length)
+  };
+}
+
+function closeExerciseOverlay() {
+  state.exerciseOverlay = {
+    ...state.exerciseOverlay,
+    open: false
+  };
+}
+
 function renderModalFlashcardCard(card) {
   if (card?.kind) {
     return renderDeckCard(card);
@@ -588,19 +712,84 @@ function renderFlashcardModal() {
   `;
 }
 
-function renderStudentPanel() {
-  const summary = currentSummary();
-  const modelLabel = state.settings.currentModel || "Sin modelo";
+function renderExerciseOverlayModal() {
+  const session = state.practiceSession;
+  if (!state.exerciseOverlay.open || session?.kind !== "exercise" || !session?.solution) return "";
+
+  const steps = session.solution.steps || [];
+  const totalSlides = steps.length + 1;
+  const currentIndex = clamp(state.exerciseOverlay.index, 0, Math.max(0, totalSlides - 1));
+  const accessibleIndex = maxExerciseOverlayIndex(session);
+  const currentStep = steps[currentIndex] || null;
+  const isReflection = currentIndex >= steps.length;
+  const canGoPrev = currentIndex > 0;
+  const canGoNext = currentIndex < Math.min(accessibleIndex, totalSlides - 1);
+  const completedSteps = steps.filter((step) => session.stepResults?.[step.id]?.correct).length;
 
   return `
-    <div class="student-panel">
+    <div class="modal flashcard-modal exercise-modal">
+      <div class="modal-card flashcard-modal-card exercise-modal-card">
+        <div class="modal-header">
+          <div>
+            <span class="tag">${currentIndex + 1}/${totalSlides}</span>
+            <h3 style="margin:10px 0 4px;">${escapeHtml(session.solution.exercise || session.topic || "Problema guiado")}</h3>
+            <p class="muted">${escapeHtml(session.conceptTopic || session.topic || "Tutor local")} · ${completedSteps}/${steps.length} pasos validados</p>
+          </div>
+          <button class="ghost-btn" data-action="close-exercise-overlay">Cerrar</button>
+        </div>
+        <div class="flashcard-stage">
+          <button class="flashcard-arrow" data-action="exercise-prev" ${canGoPrev ? "" : "disabled"}>&larr;</button>
+          <div class="flashcard-content-wrap">
+            <article class="flashcard-panel exercise-overlay-panel">
+              ${isReflection
+                ? `
+                  <div class="stack">
+                    <p class="tag good">Cierre</p>
+                    <h4 style="margin:0;">Reflexion final</h4>
+                    <div class="flashcard-copy">${formatRichText(session.solution.finalReflection || "Comprueba que cada paso tenga sentido antes de seguir con otro ejercicio.")}</div>
+                    <div class="exercise-progress-note">
+                      <strong>Registro local</strong>
+                      <p class="muted">Los intentos, pistas y decisiones del tutor ya quedaron asociados al concepto y a esta sesion.</p>
+                    </div>
+                  </div>
+                `
+                : `
+                  <div class="stack">
+                    <p class="tag">Paso ${currentIndex + 1}</p>
+                    ${renderExerciseStep(currentStep, currentIndex)}
+                    <div class="exercise-progress-note">
+                      <strong>Avance secuencial</strong>
+                      <p class="muted">Cada respuesta se evalua por separado. La flecha derecha se activa cuando este paso queda validado.</p>
+                    </div>
+                  </div>
+                `}
+            </article>
+          </div>
+          <button class="flashcard-arrow" data-action="exercise-next" ${canGoNext ? "" : "disabled"}>&rarr;</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderStudentPanel() {
+  const summary = currentSummary();
+  const compact = state.studentPanel.compact;
+  const navChevron = state.studentPanel.navigationOpen ? "▾" : "▸";
+  const profileChevron = state.studentPanel.profileOpen ? "▾" : "▸";
+
+  return `
+    <div class="student-panel ${compact ? "compact" : ""}">
       <div class="student-panel-brand">
-        <strong>TutorMate</strong>
-        <span class="muted">${escapeHtml(summary.displayName)}</span>
+        <div class="student-panel-brand-row">
+          <strong>${compact ? "TM" : "TutorMate"}</strong>
+          <button class="student-panel-compact" data-action="toggle-panel-compact" title="${compact ? "Expandir panel" : "Compactar panel"}">${compact ? "⇢" : "⇠"}</button>
+        </div>
+        ${compact ? "" : `<span class="muted">${escapeHtml(summary.displayName)}</span>`}
       </div>
       <button class="student-panel-toggle" data-action="toggle-student-panel" data-section="navigation">
-        <span>🧭 Navegacion</span>
-        <span>${state.studentPanel.navigationOpen ? "▾" : "▸"}</span>
+        <span>${compact ? "🧭" : "🧭 Navegacion"}</span>
+        <span>${compact ? "" : navChevron}</span>
       </button>
       ${state.studentPanel.navigationOpen
         ? `
@@ -609,21 +798,21 @@ function renderStudentPanel() {
             ${renderNavButton("practice", "🧠 Estudio")}
             ${renderNavButton("tracking", "📈 Tracking")}
             ${renderNavButton("profile", "🙂 Perfil")}
+            <button class="nav-btn settings-entry" data-action="open-settings" title="Configuracion LLM">${compact ? "⚙️" : "⚙️ Configuracion LLM"}</button>
           </div>
         `
         : ""}
       <button class="student-panel-toggle" data-action="toggle-student-panel" data-section="profile">
-        <span>🙂 Estudiante</span>
-        <span>${state.studentPanel.profileOpen ? "▾" : "▸"}</span>
+        <span>${compact ? "🙂" : "🙂 Estudiante"}</span>
+        <span>${compact ? "" : profileChevron}</span>
       </button>
-      ${state.studentPanel.profileOpen
+      ${state.studentPanel.profileOpen && !compact
         ? `
           <div class="student-panel-body">
             <span class="tag">${escapeHtml(summary.focusArea)}</span>
             <p><strong>${summary.xp} XP</strong> - Nivel ${summary.level}</p>
             <p class="muted">Meta ${summary.dailyGoalProgress}/${summary.dailyGoal} XP</p>
             <p class="muted">Conceptos: ${summary.knownConcepts}</p>
-            <p class="muted">Modelo: ${escapeHtml(modelLabel)}</p>
           </div>
         `
         : ""}
@@ -645,6 +834,7 @@ function tutorMetrics() {
 
   return {
     sessions: sessions.length,
+    struggleSignals: (state.profile.struggleSignals || []).length,
     contextHelps: sessions.filter((session) => session.kind === "context-help" || session.kind === "visual-help").length,
     conceptSessions: sessions.filter((session) => session.kind === "concept").length,
     exerciseSessions: sessions.filter((session) => session.kind === "exercise").length,
@@ -657,11 +847,91 @@ function tutorMetrics() {
   };
 }
 
+function conceptMetrics() {
+  const buckets = new Map();
+
+  for (const concept of knownConcepts(state.profile)) {
+    const key = String(concept.topic || "Sin concepto").trim() || "Sin concepto";
+    buckets.set(key, {
+      concept: key,
+      status: concept.status || "introduced",
+      sessions: 0,
+      actions: 0,
+      conceptSessions: 0,
+      exerciseSessions: 0,
+      helpSessions: 0,
+      struggles: 0,
+      correct: 0,
+      incorrect: 0,
+      ambiguous: 0
+    });
+  }
+
+  for (const session of state.profile.tutorSessions || []) {
+    const key = String(session.conceptTopic || session.topic || "Sin concepto").trim() || "Sin concepto";
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        concept: key,
+        status: "introduced",
+        sessions: 0,
+        actions: 0,
+        conceptSessions: 0,
+        exerciseSessions: 0,
+        helpSessions: 0,
+        struggles: 0,
+        correct: 0,
+        incorrect: 0,
+        ambiguous: 0
+      });
+    }
+
+    const bucket = buckets.get(key);
+    bucket.sessions += 1;
+    bucket.actions += (session.events || []).length;
+    if (session.kind === "concept") bucket.conceptSessions += 1;
+    if (session.kind === "exercise") bucket.exerciseSessions += 1;
+    if (session.kind === "context-help" || session.kind === "visual-help") bucket.helpSessions += 1;
+
+    for (const event of session.events || []) {
+      if (event.type === "step-attempt") {
+        if (event.result === "correct") bucket.correct += 1;
+        if (event.result === "incorrect") bucket.incorrect += 1;
+        if (event.result === "ambiguous") bucket.ambiguous += 1;
+      }
+    }
+  }
+
+  for (const signal of state.profile.struggleSignals || []) {
+    const key = String(signal.conceptTopic || signal.topic || "Sin concepto").trim() || "Sin concepto";
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        concept: key,
+        status: "introduced",
+        sessions: 0,
+        actions: 0,
+        conceptSessions: 0,
+        exerciseSessions: 0,
+        helpSessions: 0,
+        struggles: 0,
+        correct: 0,
+        incorrect: 0,
+        ambiguous: 0
+      });
+    }
+
+    const bucket = buckets.get(key);
+    bucket.struggles += Number(signal.occurrences || 1);
+  }
+
+  return [...buckets.values()].sort((left, right) => right.actions - left.actions || right.sessions - left.sessions);
+}
+
 function render() {
   root.innerHTML = renderShell();
   modalRoot.innerHTML = [
     state.settingsOpen ? renderSettingsModal() : "",
     renderFlashcardModal(),
+    renderExerciseOverlayModal(),
     state.loadingPanel.open ? renderLoadingPanel() : ""
   ].join("");
   wireLessonFrame();
@@ -669,6 +939,7 @@ function render() {
   enhanceMath(document.querySelector(".page-content"));
   enhanceMath(document.querySelector(".chat-feed"));
   enhanceMath(document.querySelector(".practice-session"));
+  enhanceMath(modalRoot);
   scrollPendingTarget();
 }
 
@@ -681,22 +952,15 @@ function scrollPendingTarget() {
 
 function renderShell() {
   const meta = pageMeta[state.page];
-  const modelLabel = state.settings.currentModel || "Sin modelo";
 
   return `
-    <div class="app-shell">
+    <div class="app-shell ${state.studentPanel.compact ? "compact-panel" : ""}">
       ${renderStudentPanel()}
       <main class="main-card">
         <header class="header">
           <div>
             <h2>${meta.title}</h2>
             <p class="muted">${meta.subtitle}</p>
-          </div>
-          <div class="header-actions">
-            <span class="tag">Ollama</span>
-            <span class="tag">${escapeHtml(modelLabel)}</span>
-            <span class="tag ${state.ollama.ok ? "good" : ""}">${escapeHtml(state.ollama.message)}</span>
-            <button class="btn secondary" data-action="open-settings">Preferencias</button>
           </div>
         </header>
         <section class="page-content">
@@ -711,7 +975,15 @@ function renderShell() {
 }
 
 function renderNavButton(key, label) {
-  return `<button class="nav-btn ${state.page === key ? "active" : ""}" data-action="nav" data-page="${key}">${label}</button>`;
+  const [icon, ...rest] = String(label).split(" ");
+  const text = rest.join(" ").trim();
+
+  return `
+    <button class="nav-btn ${state.page === key ? "active" : ""} ${state.studentPanel.compact ? "compact" : ""}" data-action="nav" data-page="${key}" title="${escapeHtml(text || label)}">
+      <span class="nav-icon">${escapeHtml(icon)}</span>
+      ${state.studentPanel.compact ? "" : `<span>${escapeHtml(text || label)}</span>`}
+    </button>
+  `;
 }
 
 function renderLessonsPage() {
@@ -733,7 +1005,7 @@ function renderLessonsPage() {
         <div class="row">
           <div class="hero-copy">
             <h2>Rutas de aprendizaje</h2>
-            <p class="muted">Los datos de lecciones vienen del JSON local y la ayuda contextual usa Ollama.</p>
+            <p class="muted">Las lecciones viven en el JSON local y la ayuda contextual aparece como tarjetas flotantes sobre la lectura.</p>
           </div>
           <span class="tag">${ratio.done}/${ratio.total} completadas</span>
         </div>
@@ -804,7 +1076,6 @@ function renderLessonReader() {
   const stages = lesson.stages || [];
   const stage = stages[state.stageIndex] || { html: "<p>Sin contenido.</p>" };
   const iframeHtml = wrapStageHtml(stage.html, lesson.title, state.stageIndex + 1, stages.length);
-  const visionReady = currentModelSupportsVision() && inferenceReadiness().ready;
 
   return `
     <div class="reader-panel reader-panel-single">
@@ -818,21 +1089,17 @@ function renderLessonReader() {
             </div>
             <div class="row">
               <button class="btn secondary" data-action="close-lesson">Volver</button>
-              ${currentModelSupportsVision()
-                ? `<button class="icon-action-btn ${state.lessonUi.cropMode ? "active" : ""}" data-action="toggle-crop-mode" title="crop image" aria-label="crop image">✂️</button>`
-                : ""}
             </div>
-          </div>
-          <div class="reader-helper-row">
-            <span class="tag">Texto: selecciona y haz clic derecho para explicar.</span>
-            <span class="tag ${visionReady ? "good" : ""}">
-              ${visionReady
-                ? "Imagen: arrastra un recorte y pregunta Que es esto?"
-                : "Usa un modelo con vision para preguntas sobre imagenes"}
-            </span>
           </div>
           <div class="progress-bar"><span style="width:${((state.stageIndex + 1) / stages.length) * 100}%"></span></div>
           <div class="reader-frame-shell" id="lesson-frame-shell">
+            ${currentModelSupportsVision()
+              ? `
+                <div class="lesson-tool-dock">
+                  <button class="icon-action-btn ${state.lessonUi.cropMode ? "active" : ""}" data-action="toggle-crop-mode" title="crop image" aria-label="crop image">✂️</button>
+                </div>
+              `
+              : ""}
             <iframe id="lesson-frame" title="Leccion" data-srcdoc="${encodeURIComponent(iframeHtml)}"></iframe>
             <div class="lesson-overlay" id="lesson-overlay">${renderLessonOverlay()}</div>
           </div>
@@ -1025,6 +1292,7 @@ function renderExerciseStep(step, index) {
         <button class="btn primary" data-action="check-step" data-step-id="${escapeHtml(step.id)}">Comprobar</button>
         <button class="btn secondary" data-action="toggle-step-hint" data-step-id="${escapeHtml(step.id)}">${hintOpen ? "Ocultar pista" : "Mostrar pista"}</button>
       </div>
+      ${result?.attempts ? `<p class="muted">Intentos en este paso: ${result.attempts}${result.failures ? ` · fallos marcados: ${result.failures}` : ""}</p>` : ""}
       ${hintOpen ? `<p class="muted">${escapeHtml(step.hint || "Sin pista disponible.")}</p>` : ""}
       ${result?.message ? `<p class="muted">${escapeHtml(result.message)}</p>` : ""}
       ${result?.correct ? `<div class="study-copy">${formatRichText(step.explanation || "")}</div>` : ""}
@@ -1040,6 +1308,8 @@ function renderPracticeSession() {
 
   const currentStepIndex = session.currentStepIndex || 0;
   const currentStep = session.solution?.steps?.[currentStepIndex] || null;
+  const stepCount = session.solution?.steps?.length || 0;
+  const completedSteps = (session.solution?.steps || []).filter((step) => session.stepResults?.[step.id]?.correct).length;
 
   return `
     <section class="practice-session stack">
@@ -1068,17 +1338,18 @@ function renderPracticeSession() {
           <section class="hero-card stack">
             <div class="card-head">
               <div>
-                <h3 style="margin:0;">Solucion guiada</h3>
+                <h3 style="margin:0;">Problema guiado</h3>
                 <p class="muted">${escapeHtml(session.solution.exercise || session.topic)}</p>
               </div>
-              <span class="tag">Paso ${currentStepIndex + 1}/${session.solution.steps.length}</span>
+              <span class="tag">${completedSteps}/${stepCount} pasos validados</span>
             </div>
-            <div class="step-grid single-step-grid">
-              ${renderExerciseStep(currentStep, currentStepIndex)}
+            <p class="muted">El problema se abre como un panel flotante de pasos. Cada respuesta se valida una por una antes de avanzar.</p>
+            <div class="row">
+              <button class="btn primary" data-action="open-exercise-overlay">${state.exerciseOverlay.open ? "Volver al problema" : "Abrir problema"}</button>
             </div>
             <div class="card tracking-note">
               <strong>Registro invisible</strong>
-              <p class="muted">Las decisiones del tutor, tutorias simuladas e intentos del estudiante se guardan localmente para el tracking.</p>
+              <p class="muted">Las decisiones del tutor, tutorias simuladas e intentos del estudiante se guardan localmente y tambien se agregan por concepto.</p>
             </div>
           </section>
         `
@@ -1088,6 +1359,9 @@ function renderPracticeSession() {
               <div class="card">
                 <strong>Ejercicio completado</strong>
                 <p class="muted">${escapeHtml(session.solution.finalReflection || "Comprueba que cada paso tenga sentido antes de seguir al siguiente ejercicio.")}</p>
+                <div class="row">
+                  <button class="btn secondary" data-action="open-exercise-overlay">Reabrir recorrido</button>
+                </div>
               </div>
             </section>
           `
@@ -1104,17 +1378,16 @@ function renderPracticePage() {
       <section class="hero-card">
         <div class="row">
           <div>
-            <h2>Estudio guiado con Ollama</h2>
-            <p class="muted">Primero clasifico la pregunta. Luego genero tarjetas de concepto o pasos guiados segun corresponda.</p>
+            <h2>Estudio guiado</h2>
+            <p class="muted">Primero clasifico la pregunta. Luego genero tarjetas de concepto o un problema guiado por pasos segun corresponda.</p>
           </div>
-          <span class="tag ${state.ollama.ok ? "good" : ""}">${escapeHtml(state.settings.currentModel || "Sin modelo")}</span>
         </div>
         <div class="row">
           ${Object.entries(modeLabels).map(([key, label]) => `
             <button class="chip-btn ${state.practiceMode === key ? "active" : ""}" data-action="practice-mode" data-mode="${key}">${label}</button>
           `).join("")}
         </div>
-        <p class="muted">${escapeHtml(state.ollama.message || readiness.reason || "")}</p>
+        <p class="muted">${escapeHtml(readiness.reason || "")}</p>
       </section>
       <section class="split">
         <div class="chat-card">
@@ -1155,6 +1428,10 @@ function renderPracticePage() {
 function renderTrackingPage() {
   const metrics = tutorMetrics();
   const sessions = recentTutorSessions(10);
+  const concepts = conceptMetrics().slice(0, 12);
+  const struggleSignals = [...(state.profile.struggleSignals || [])]
+    .sort((left, right) => String(right.lastDetectedAt || right.ts || "").localeCompare(String(left.lastDetectedAt || left.ts || "")))
+    .slice(0, 8);
   const decisionMap = (state.profile.tutorSessions || [])
     .flatMap((session) => session.events || [])
     .flatMap((event) => event.decisions || [])
@@ -1181,6 +1458,7 @@ function renderTrackingPage() {
         <article class="stats-card"><p class="muted">Correctas</p><strong>${metrics.correctAttempts}</strong><span class="muted">intentos buenos</span></article>
         <article class="stats-card"><p class="muted">Incorrectas</p><strong>${metrics.incorrectAttempts}</strong><span class="muted">intentos a corregir</span></article>
         <article class="stats-card"><p class="muted">Ambiguas</p><strong>${metrics.ambiguousAttempts}</strong><span class="muted">faltaron detalles</span></article>
+        <article class="stats-card"><p class="muted">Alertas</p><strong>${metrics.struggleSignals}</strong><span class="muted">pasos marcados</span></article>
         <article class="stats-card"><p class="muted">Pasos</p><strong>${metrics.stepsCompleted}</strong><span class="muted">pasos completados</span></article>
         <article class="stats-card"><p class="muted">Decisiones</p><strong>${metrics.decisionsLogged}</strong><span class="muted">acciones del tutor</span></article>
       </section>
@@ -1210,6 +1488,63 @@ function renderTrackingPage() {
             `).join("") || `<div class="empty-state">Aun no hay decisiones registradas.</div>`}
           </div>
         </aside>
+      </section>
+      <section class="card stack">
+        <div class="card-head">
+          <div>
+            <h3 style="margin:0;">Alertas de apoyo</h3>
+            <p class="muted">Cuando un paso llega a tres fallos, se marca el concepto y la etapa para el reporte del estudiante.</p>
+          </div>
+          <span class="tag">${struggleSignals.length} alertas visibles</span>
+        </div>
+        <div class="stack">
+          ${struggleSignals.length
+            ? struggleSignals.map((signal) => `
+                <div class="card tracking-session">
+                  <div class="card-head">
+                    <div>
+                      <strong>${escapeHtml(signal.conceptTopic || signal.topic || "Sin concepto")}</strong>
+                      <p class="muted">${escapeHtml(signal.stepTitle || signal.stepId || "Paso sin titulo")}</p>
+                    </div>
+                    <span class="tag">${signal.failures} fallos</span>
+                  </div>
+                  <div class="tracking-metric-row"><span>Ocurrencias</span><strong>${signal.occurrences || 1}</strong></div>
+                </div>
+              `).join("")
+            : `<div class="empty-state">Todavia no hay pasos marcados por dificultad.</div>`}
+        </div>
+      </section>
+      <section class="card stack">
+        <div class="card-head">
+          <div>
+            <h3 style="margin:0;">Acumulado por concepto</h3>
+            <p class="muted">Cada accion del tutor se conserva asociada a su concepto principal y se resume en estas metricas.</p>
+          </div>
+          <span class="tag">${concepts.length} conceptos</span>
+        </div>
+        <div class="lesson-grid concept-metric-grid">
+          ${concepts.length
+            ? concepts.map((concept) => `
+                <article class="card concept-metric-card">
+                  <div class="card-head">
+                    <div>
+                      <strong>${escapeHtml(concept.concept)}</strong>
+                      <p class="muted">${escapeHtml(concept.status || "introduced")}</p>
+                    </div>
+                    <span class="tag">${concept.actions} acciones</span>
+                  </div>
+                  <div class="tracking-metric-row"><span>Sesiones</span><strong>${concept.sessions}</strong></div>
+                  <div class="tracking-metric-row"><span>Concepto</span><strong>${concept.conceptSessions}</strong></div>
+                  <div class="tracking-metric-row"><span>Ejercicio</span><strong>${concept.exerciseSessions}</strong></div>
+                  <div class="tracking-metric-row"><span>Ayudas</span><strong>${concept.helpSessions}</strong></div>
+                  <div class="tracking-metric-row"><span>Alertas</span><strong>${concept.struggles}</strong></div>
+                  <div class="tracking-metric-row"><span>Correctas</span><strong>${concept.correct}</strong></div>
+                  <div class="tracking-metric-row"><span>Incorrectas</span><strong>${concept.incorrect}</strong></div>
+                  <div class="tracking-metric-row"><span>Ambiguas</span><strong>${concept.ambiguous}</strong></div>
+                </article>
+              `).join("")
+            : `<div class="empty-state">Todavia no hay conceptos con acciones registradas.</div>`}
+        </div>
       </section>
     </div>
   `;
@@ -1420,7 +1755,7 @@ function renderLoadingPanel() {
           </div>
         </div>
         <div class="stack">
-          <span class="tag">Cargando modelo</span>
+          <span class="tag">Tutor local</span>
           <h3 style="margin:0;">${escapeHtml(state.loadingPanel.title)}</h3>
           <p class="muted">${escapeHtml(state.loadingPanel.detail)}</p>
         </div>
@@ -1634,7 +1969,15 @@ function nextTutorEvent(result, answer = "") {
     return {
       result: "correct",
       decisions: ["b1", "b2", "g2"],
-      message: "Bien. Ya puedes pasar al siguiente paso."
+      message: "Bien. La idea principal ya esta suficientemente clara para continuar."
+    };
+  }
+
+  if (result === "ambiguous") {
+    return {
+      result: "ambiguous",
+      decisions: ["c1", "c3", "d1"],
+      message: "Vas bien encaminado, pero necesito un poco mas de precision para aprobar este paso."
     };
   }
 
@@ -1734,6 +2077,9 @@ function preparePracticeSession({ kind, classification, deck = null, solution = 
     hiddenTrace,
     sessionId,
     gameState: deck ? buildGameState(deck) : {},
+    stepAttempts: {},
+    stepFailureCounts: {},
+    flaggedSteps: {},
     stepInputs: {},
     stepResults: {},
     openHints: {},
@@ -1747,6 +2093,22 @@ async function persistConceptStudy({ topic, relatedTopics = [], status = "studyi
     relatedTopics,
     status,
     source
+  });
+  await saveProfileState();
+}
+
+async function recordStepStruggle(step, failures) {
+  const session = state.practiceSession;
+  if (!session?.conceptTopic) return;
+
+  state.profile = trackStruggleSignal(state.profile, {
+    conceptTopic: session.conceptTopic,
+    topic: session.topic,
+    stepId: step.id,
+    stepTitle: step.title,
+    sessionIds: session.sessionId ? [session.sessionId] : [],
+    failures,
+    status: "open"
   });
   await saveProfileState();
 }
@@ -1843,6 +2205,7 @@ async function handleStudyQuestion(question) {
       reusedConcept: false,
       sessionId
     });
+    state.exerciseOverlay = { open: false, index: 0 };
     state.chatMessages.push({
       role: "bot",
       text: "Esto no parece una pregunta de matematicas, asi que no active las tarjetas ni la practica guiada."
@@ -1871,6 +2234,7 @@ async function handleStudyQuestion(question) {
       deck,
       sessionId
     });
+    state.exerciseOverlay = { open: false, index: 0 };
     openFlashcards({
       source: "practice-deck",
       title: `Tarjetas de ${deck.topic}`,
@@ -1921,6 +2285,10 @@ async function handleStudyQuestion(question) {
     hiddenTrace,
     sessionId
   });
+  state.exerciseOverlay = {
+    open: !deck,
+    index: 0
+  };
   if (deck) {
     openFlashcards({
       source: "practice-deck",
@@ -2160,7 +2528,14 @@ async function handleClick(event) {
   const action = button.dataset.action;
 
   if (action === "close-flashcards") {
+    const shouldResumeExercise = state.practiceSession?.kind === "exercise"
+      && state.practiceSession?.solution
+      && state.flashcards.sessionId
+      && state.flashcards.sessionId === state.practiceSession.sessionId;
     closeFlashcards();
+    if (shouldResumeExercise) {
+      openExerciseOverlay();
+    }
     render();
     return;
   }
@@ -2182,6 +2557,15 @@ async function handleClick(event) {
     state.studentPanel = {
       ...state.studentPanel,
       [`${section}Open`]: !state.studentPanel[`${section}Open`]
+    };
+    render();
+    return;
+  }
+
+  if (action === "toggle-panel-compact") {
+    state.studentPanel = {
+      ...state.studentPanel,
+      compact: !state.studentPanel.compact
     };
     render();
     return;
@@ -2320,6 +2704,31 @@ async function handleClick(event) {
     state.settingsDraft = null;
   }
 
+  if (action === "open-exercise-overlay") {
+    openExerciseOverlay(Math.min(state.exerciseOverlay.index || 0, maxExerciseOverlayIndex()));
+    render();
+    return;
+  }
+
+  if (action === "close-exercise-overlay") {
+    closeExerciseOverlay();
+    render();
+    return;
+  }
+
+  if (action === "exercise-prev") {
+    state.exerciseOverlay.index = Math.max(0, state.exerciseOverlay.index - 1);
+    render();
+    return;
+  }
+
+  if (action === "exercise-next") {
+    const maxIndex = Math.min(maxExerciseOverlayIndex(), state.practiceSession?.solution?.steps?.length || 0);
+    state.exerciseOverlay.index = Math.min(maxIndex, state.exerciseOverlay.index + 1);
+    render();
+    return;
+  }
+
   if (action === "refresh-models" && state.settingsDraft) {
     await refreshOllamaModels(state.settingsDraft.ollamaBaseUrl);
   }
@@ -2332,8 +2741,8 @@ async function handleClick(event) {
 
     if (shouldShowLoading) {
       openLoadingPanel({
-        title: "Preparando el modelo",
-        detail: `Espera un momento mientras preparo ${nextSettings.currentModel || "la sesion"} en Ollama.`
+        title: "Preparando tutor local",
+        detail: "Espera un momento mientras actualizo la configuracion del tutor."
       });
     }
 
@@ -2408,17 +2817,36 @@ async function handleClick(event) {
     const step = state.practiceSession.solution.steps.find((item) => item.id === button.dataset.stepId);
     if (step) {
       const value = state.practiceSession.stepInputs?.[step.id] || "";
-      const normalizedValue = normalizeLooseAnswer(value);
-      const accepted = (step.acceptedAnswers || []).some((answer) => normalizeLooseAnswer(answer) === normalizedValue);
-      const eventMeta = nextTutorEvent(accepted ? "correct" : "incorrect", value);
+      const evaluation = evaluateStepAnswer(step, value);
+      const eventMeta = nextTutorEvent(evaluation.result, value);
+      const nextAttempts = {
+        ...(state.practiceSession.stepAttempts || {}),
+        [step.id]: Number(state.practiceSession.stepAttempts?.[step.id] || 0) + 1
+      };
+      const nextFailureCounts = {
+        ...(state.practiceSession.stepFailureCounts || {}),
+        [step.id]: Number(state.practiceSession.stepFailureCounts?.[step.id] || 0) + (eventMeta.result === "incorrect" ? 1 : 0)
+      };
       const stepResults = {
         ...(state.practiceSession.stepResults || {}),
         [step.id]: {
           correct: eventMeta.result === "correct",
+          result: eventMeta.result,
+          attempts: nextAttempts[step.id],
+          failures: nextFailureCounts[step.id],
           message: eventMeta.message
         }
       };
-      state.practiceSession = { ...state.practiceSession, stepResults };
+      const flaggedSteps = {
+        ...(state.practiceSession.flaggedSteps || {})
+      };
+      state.practiceSession = {
+        ...state.practiceSession,
+        stepAttempts: nextAttempts,
+        stepFailureCounts: nextFailureCounts,
+        flaggedSteps,
+        stepResults
+      };
       if (state.practiceSession.sessionId) {
         await appendTutorSessionEvent(state.practiceSession.sessionId, {
           type: "step-attempt",
@@ -2426,8 +2854,29 @@ async function handleClick(event) {
           stepTitle: step.title,
           answer: value,
           result: eventMeta.result,
+          attempts: nextAttempts[step.id],
+          failures: nextFailureCounts[step.id],
           decisions: eventMeta.decisions
         });
+      }
+
+      if (eventMeta.result === "incorrect" && nextFailureCounts[step.id] >= 3 && !flaggedSteps[step.id]) {
+        flaggedSteps[step.id] = true;
+        state.practiceSession = {
+          ...state.practiceSession,
+          flaggedSteps
+        };
+        await recordStepStruggle(step, nextFailureCounts[step.id]);
+        if (state.practiceSession.sessionId) {
+          await appendTutorSessionEvent(state.practiceSession.sessionId, {
+            type: "step-struggle",
+            stepId: step.id,
+            stepTitle: step.title,
+            conceptTopic: state.practiceSession.conceptTopic,
+            failures: nextFailureCounts[step.id],
+            decisions: ["a2", "c2", "g1"]
+          });
+        }
       }
 
       if (eventMeta.result === "correct") {
@@ -2455,6 +2904,7 @@ async function handleClick(event) {
   }
 
   if (action === "open-session-flashcards" && state.practiceSession?.deck) {
+    closeExerciseOverlay();
     openFlashcards({
       source: "practice-deck",
       title: `Tarjetas de ${state.practiceSession.deck.topic}`,
@@ -2556,7 +3006,7 @@ async function refreshOllamaModels(baseUrl) {
 
 async function askWithOllama(messages) {
   if (!state.settings.currentModel) {
-    throw new Error("Selecciona un modelo de Ollama.");
+    throw new Error("Activa un modelo local desde Configuracion LLM.");
   }
 
   return window.bridge.chat({

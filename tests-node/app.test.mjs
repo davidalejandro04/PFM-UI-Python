@@ -10,7 +10,8 @@ import {
   profileSummary,
   recordLessonCompletion,
   setupProfile,
-  trackConceptStudy
+  trackConceptStudy,
+  trackStruggleSignal
 } from "../src/utils/profile.mjs";
 import {
   completionRatio,
@@ -39,6 +40,7 @@ function run() {
   assert.equal(summary.lessonsCompleted, 1);
   assert.ok(completedPairs(profile).has("Unidad::Leccion"));
   assert.deepEqual(profile.tutorSessions, []);
+  assert.deepEqual(profile.struggleSignals, []);
 
   profile = trackConceptStudy(profile, {
     topic: "Fracciones equivalentes",
@@ -67,6 +69,24 @@ function run() {
   });
   assert.equal(profile.tutorSessions.length, 1);
   assert.equal(profile.tutorSessions[0].kind, "exercise");
+
+  profile = trackStruggleSignal(profile, {
+    conceptTopic: "Ecuaciones lineales",
+    topic: "Ecuaciones",
+    stepId: "step-1",
+    stepTitle: "Identifica la variable",
+    failures: 3
+  });
+  profile = trackStruggleSignal(profile, {
+    conceptTopic: "Ecuaciones lineales",
+    topic: "Ecuaciones",
+    stepId: "step-1",
+    stepTitle: "Identifica la variable",
+    failures: 4
+  });
+  assert.equal(profile.struggleSignals.length, 1);
+  assert.equal(profile.struggleSignals[0].failures, 4);
+  assert.equal(profile.struggleSignals[0].occurrences, 2);
 
   const ratio = completionRatio(lessons, new Set());
   assert.ok(ratio.total > 0);

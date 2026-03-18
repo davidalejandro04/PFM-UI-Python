@@ -102,6 +102,21 @@ button, input, select, textarea { font: inherit; }
   background: transparent;
   color: var(--muted);
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-btn.compact {
+  justify-content: center;
+  padding: 14px 12px;
+}
+
+.nav-icon {
+  min-width: 24px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
 }
 
 .nav-btn.active {
@@ -179,6 +194,10 @@ button, input, select, textarea { font: inherit; }
   margin-left: 286px;
 }
 
+.app-shell.compact-panel .main-card {
+  margin-left: 126px;
+}
+
 .student-panel {
   position: fixed;
   top: 22px;
@@ -202,6 +221,24 @@ button, input, select, textarea { font: inherit; }
   gap: 4px;
 }
 
+.student-panel-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.student-panel-compact {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #d8e1e3;
+  border-radius: 14px;
+  background: #fffdf8;
+  color: var(--secondary);
+  cursor: pointer;
+  font-size: 18px;
+}
+
 .student-panel-toggle {
   width: 100%;
   border: 1px solid #d8e1e3;
@@ -221,6 +258,34 @@ button, input, select, textarea { font: inherit; }
   flex-direction: column;
   gap: 10px;
   padding: 2px 0 6px;
+}
+
+.student-panel.compact {
+  width: 92px;
+  padding: 14px 10px;
+}
+
+.student-panel.compact .student-panel-brand {
+  align-items: center;
+}
+
+.student-panel.compact .student-panel-brand-row {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.student-panel.compact .student-panel-toggle {
+  justify-content: center;
+  padding: 11px 12px;
+}
+
+.student-panel.compact .student-panel-body {
+  align-items: center;
+}
+
+.student-panel.compact .settings-entry {
+  justify-content: center;
+  padding: 14px 12px;
 }
 
 .header {
@@ -520,6 +585,16 @@ select {
   min-height: 70vh;
 }
 
+.lesson-tool-dock {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 4;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
 .reader-panel-single {
   grid-template-columns: 1fr;
 }
@@ -753,6 +828,16 @@ select {
   align-items: center;
 }
 
+.concept-metric-grid {
+  align-items: stretch;
+}
+
+.concept-metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .flashcard-modal {
   backdrop-filter: blur(12px);
   background: rgba(12, 23, 29, 0.52);
@@ -803,6 +888,25 @@ select {
   margin-top: 16px;
   line-height: 1.7;
   font-size: 18px;
+}
+
+.exercise-modal {
+  background: rgba(12, 23, 29, 0.72);
+}
+
+.exercise-modal-card {
+  width: min(1040px, 100%);
+}
+
+.exercise-overlay-panel {
+  min-height: 420px;
+}
+
+.exercise-progress-note {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #eef9fd;
+  border: 1px solid #79cce9;
 }
 
 .modal {
@@ -973,6 +1077,10 @@ select {
   }
 
   .main-card {
+    margin-left: 0;
+  }
+
+  .app-shell.compact-panel .main-card {
     margin-left: 0;
   }
 

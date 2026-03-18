@@ -11,7 +11,8 @@ export const defaultProfile = {
   completed: [],
   activity: [],
   conceptProgress: [],
-  tutorSessions: []
+  tutorSessions: [],
+  struggleSignals: []
 };
 
 const XP_PER_LEVEL = 40;
@@ -87,6 +88,42 @@ function mergeConceptEntries(existing, incoming) {
   };
 }
 
+function normalizeStruggleSignal(input = {}) {
+  const conceptTopic = String(input.conceptTopic || input.topic || "").trim();
+  const stepId = String(input.stepId || "").trim();
+  const stepTitle = String(input.stepTitle || "").trim();
+  const keyBase = `${conceptTopic}::${stepId || stepTitle}`.trim();
+  const key = normalizeTopicKey(keyBase);
+  if (!conceptTopic || !key) return null;
+
+  return {
+    key,
+    conceptTopic,
+    topic: String(input.topic || conceptTopic).trim() || conceptTopic,
+    stepId,
+    stepTitle,
+    sessionIds: uniqueTopics(input.sessionIds || []).filter(Boolean),
+    failures: Math.max(1, Number(input.failures || input.attemptsAtDetection || 1)),
+    occurrences: Math.max(1, Number(input.occurrences || 1)),
+    status: String(input.status || "open").trim() || "open",
+    ts: input.ts || nowIso(),
+    lastDetectedAt: input.lastDetectedAt || input.ts || nowIso()
+  };
+}
+
+function mergeStruggleSignals(existing, incoming) {
+  return {
+    ...existing,
+    ...incoming,
+    sessionIds: uniqueTopics([...(existing.sessionIds || []), ...(incoming.sessionIds || [])]),
+    failures: Math.max(Number(existing.failures || 0), Number(incoming.failures || 0)),
+    occurrences: Math.max(1, Number(existing.occurrences || 1) + Number(incoming.occurrences || 1)),
+    status: incoming.status || existing.status || "open",
+    ts: existing.ts || incoming.ts || nowIso(),
+    lastDetectedAt: incoming.lastDetectedAt || nowIso()
+  };
+}
+
 export function migrateProfile(input = {}) {
   const conceptProgress = Array.isArray(input.conceptProgress)
     ? input.conceptProgress
@@ -107,6 +144,11 @@ export function migrateProfile(input = {}) {
         events: Array.isArray(session?.events) ? session.events : []
       }))
     : [];
+  const struggleSignals = Array.isArray(input.struggleSignals)
+    ? input.struggleSignals
+        .map((signal) => normalizeStruggleSignal(signal))
+        .filter(Boolean)
+    : [];
 
   return {
     ...defaultProfile,
@@ -114,7 +156,8 @@ export function migrateProfile(input = {}) {
     completed: Array.isArray(input.completed) ? input.completed : [],
     activity: Array.isArray(input.activity) ? input.activity : [],
     conceptProgress,
-    tutorSessions
+    tutorSessions,
+    struggleSignals
   };
 }
 
@@ -169,7 +212,8 @@ export function resetProgress(profile) {
     completed: [],
     activity: [],
     conceptProgress: [],
-    tutorSessions: []
+    tutorSessions: [],
+    struggleSignals: []
   });
 }
 
@@ -223,6 +267,33 @@ export function knownConcepts(profile) {
     .sort((left, right) => String(right.lastStudiedAt || right.ts || "").localeCompare(String(left.lastStudiedAt || left.ts || "")));
 }
 
+export function struggleSignals(profile) {
+  return [...(migrateProfile(profile).struggleSignals || [])]
+    .sort((left, right) => String(right.lastDetectedAt || right.ts || "").localeCompare(String(left.lastDetectedAt || left.ts || "")));
+}
+
+export function trackStruggleSignal(profile, payload) {
+  const nextSignal = normalizeStruggleSignal(payload);
+  if (!nextSignal) {
+    return migrateProfile(profile);
+  }
+
+  const current = struggleSignals(profile);
+  const index = current.findIndex((item) => item.key === nextSignal.key);
+  const nextSignals = [...current];
+
+  if (index >= 0) {
+    nextSignals[index] = mergeStruggleSignals(nextSignals[index], nextSignal);
+  } else {
+    nextSignals.push(nextSignal);
+  }
+
+  return migrateProfile({
+    ...profile,
+    struggleSignals: nextSignals
+  });
+}
+
 export function recentActivity(profile, limit = 6) {
   return [...(profile.activity || [])]
     .sort((left, right) => String(right.ts || "").localeCompare(String(left.ts || "")))
@@ -267,6 +338,7 @@ export function profileSummary(profile) {
     xpToNextLevel: XP_PER_LEVEL - (Number(current.xp || 0) % XP_PER_LEVEL || 0),
     streakDays: streakDays(current),
     dailyGoalProgress: dailyGoalProgress(current),
-    knownConcepts: knownConcepts(current).length
+    knownConcepts: knownConcepts(current).length,
+    struggleSignals: struggleSignals(current).length
   };
 }
