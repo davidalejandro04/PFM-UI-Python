@@ -41,11 +41,37 @@ export const visionExplainPrompt =
   '{"concept":"...", "example":"...", "answer":"..."} ' +
   "donde concept identifica el objeto matematico observado, example da un ejemplo cercano y answer responde la pregunta 'que es esto?'.";
 
+export const contextFlashcardPrompt =
+  "Eres un tutor de matematicas que convierte dudas breves en tarjetas de ayuda. " +
+  "Responde solo en JSON valido con esta forma exacta: " +
+  '{"needsMoreContext":false,"followUp":"...","topic":"...","cards":[{"title":"...","body":"..."},{"title":"...","body":"..."},{"title":"...","body":"..."}]} ' +
+  "Si la seleccion no tiene suficiente contexto para ayudar de forma responsable, usa needsMoreContext=true y followUp debe pedir que el estudiante seleccione mas texto. " +
+  "Si si hay contexto, genera exactamente 3 tarjetas: concepto general, ejemplo guiado y relacion con lo seleccionado. " +
+  "No uses markdown ni bloques de codigo.";
+
 export function buildExplainImageUserPrompt() {
   return [
     "Observa el recorte de la leccion.",
     "Identifica el objeto, figura o representacion matematica principal.",
     "Luego conecta lo que ves con una idea clave y un ejemplo.",
+    "No uses markdown ni bloques de codigo. Solo devuelve JSON valido."
+  ].join(" ");
+}
+
+export function buildContextFlashcardUserPrompt(selection) {
+  return [
+    "Analiza la seleccion del estudiante dentro de una leccion de matematicas.",
+    "Decide si tiene suficiente contexto.",
+    "Si lo tiene, crea 3 tarjetas: concepto, ejemplo y relacion con la seleccion.",
+    `Seleccion del estudiante: ${selection}`
+  ].join(" ");
+}
+
+export function buildVisualFlashcardUserPrompt() {
+  return [
+    "Analiza el recorte visual de una leccion de matematicas.",
+    "Identifica el objeto o idea principal.",
+    "Crea 3 tarjetas: concepto general, ejemplo y relacion con lo que se ve en el recorte.",
     "No uses markdown ni bloques de codigo. Solo devuelve JSON valido."
   ].join(" ");
 }
@@ -136,5 +162,24 @@ export function buildExerciseTutorUserPrompt({
     `Modo pedagogico: ${mode}`,
     `Conceptos ya registrados: ${known}`,
     "No uses markdown ni bloques de codigo. Solo devuelve JSON valido."
+  ].join(" ");
+}
+
+export const exerciseTracePrompt =
+  "Tu objetivo es crear una conversacion simulada invisible para el estudiante entre Student y Tutorbot para un problema de matematicas. " +
+  "Tutorbot divide el problema principal en subproblemas secuenciales, solo da pistas y simula multiples respuestas incorrectas del estudiante. " +
+  "Debes seguir estas funciones de Decision: a1,a2,a3,b1,b2,c1,c2,c3,d1,d2,e1,e2,f1,f2,g1,g2,h. " +
+  "Responde solo con JSON valido usando un arreglo de objetos con esta forma exacta: " +
+  '[{"Student":"...","Thoughts":"...","Decision":"a1,a2","Subproblem":"...","Tutorbot":"..."}] ' +
+  "Genera entre 5 y 9 turnos, con varios errores del estudiante, y mantente siempre en matematicas. " +
+  "No uses markdown ni bloques de codigo.";
+
+export function buildExerciseTraceUserPrompt(problem, stepLimit = 4) {
+  return [
+    "Ahora crea la conversacion simulada.",
+    `Question: ${problem}`,
+    `Limita la cantidad de subproblemas visibles a un maximo de ${stepLimit}.`,
+    "Incluye varias respuestas incorrectas, ambiguas o incompletas del estudiante para que Tutorbot tenga que corregir, aclarar y redirigir.",
+    "Recuerda que esto sera invisible para el estudiante pero se almacenara localmente."
   ].join(" ");
 }

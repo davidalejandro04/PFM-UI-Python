@@ -38,6 +38,7 @@ function run() {
   assert.equal(summary.xp, 7);
   assert.equal(summary.lessonsCompleted, 1);
   assert.ok(completedPairs(profile).has("Unidad::Leccion"));
+  assert.deepEqual(profile.tutorSessions, []);
 
   profile = trackConceptStudy(profile, {
     topic: "Fracciones equivalentes",
@@ -51,6 +52,21 @@ function run() {
     status: "known"
   });
   assert.equal(knownConcepts(profile)[0].status, "known");
+
+  profile = migrateProfile({
+    ...profile,
+    tutorSessions: [
+      {
+        id: "session-1",
+        kind: "exercise",
+        topic: "Ecuaciones",
+        conceptTopic: "Ecuaciones lineales",
+        events: [{ type: "step-attempt", result: "correct" }]
+      }
+    ]
+  });
+  assert.equal(profile.tutorSessions.length, 1);
+  assert.equal(profile.tutorSessions[0].kind, "exercise");
 
   const ratio = completionRatio(lessons, new Set());
   assert.ok(ratio.total > 0);

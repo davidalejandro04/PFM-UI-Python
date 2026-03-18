@@ -22,16 +22,17 @@ import {
 import { wrapStageHtml } from "./utils/content.mjs";
 import {
   buildClassifierUserPrompt,
+  buildContextFlashcardUserPrompt,
   buildExerciseTutorUserPrompt,
-  buildExplainImageUserPrompt,
-  buildExplainUserPrompt,
+  buildExerciseTraceUserPrompt,
   buildStudyDeckUserPrompt,
-  explainPrompt,
+  buildVisualFlashcardUserPrompt,
+  contextFlashcardPrompt,
   exerciseTutorPrompt,
+  exerciseTracePrompt,
   modeLabels,
   studyClassifierPrompt,
-  studyDeckPrompt,
-  visionExplainPrompt
+  studyDeckPrompt
 } from "./utils/prompts.mjs";
 
 const avatarMap = {
@@ -58,6 +59,10 @@ const pageMeta = {
     title: "Estudio guiado",
     subtitle: "El tutor clasifica la pregunta y arma un recorrido de concepto o ejercicio."
   },
+  tracking: {
+    title: "Tracking",
+    subtitle: "Metricas locales del estudiante, tutorias y decisiones registradas."
+  },
   profile: {
     title: "Perfil",
     subtitle: "Onboarding, progreso tipo ruta y conceptos registrados del estudiante."
@@ -74,7 +79,9 @@ const DEFAULT_SETTINGS = {
 const PRACTICE_KIND_LABELS = {
   concept: "Concepto",
   exercise: "Ejercicio",
-  non_math: "No relacionado"
+  non_math: "No relacionado",
+  "context-help": "Ayuda textual",
+  "visual-help": "Ayuda visual"
 };
 
 const VISION_MODEL_PATTERNS = [
@@ -107,19 +114,33 @@ const state = {
   practiceSession: null,
   isThinking: false,
   explanation: { open: false, busy: false, cards: [] },
+  flashcards: {
+    open: false,
+    source: "",
+    title: "",
+    subtitle: "",
+    cards: [],
+    index: 0,
+    sessionId: null
+  },
   settingsOpen: false,
   settingsDraft: null,
   profileDraft: migrateProfile(defaultProfile),
   onboardingStep: 0,
   selectedText: "",
   scrollTarget: null,
+  studentPanel: {
+    navigationOpen: true,
+    profileOpen: false
+  },
   lessonUi: {
     scroll: { x: 0, y: 0 },
     contextMenu: { open: false, x: 20, y: 20 },
     cropMode: false,
     dragStart: null,
     cropRect: null,
-    cropAction: { open: false, x: 20, y: 20 }
+    cropAction: { open: false, x: 20, y: 20 },
+    hint: ""
   },
   loadingPanel: {
     open: true,
@@ -228,6 +249,12 @@ function shuffle(values = []) {
     [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
   }
   return next;
+}
+
+function selectionNeedsMoreContext(text = "") {
+  const trimmed = String(text || "").trim();
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  return trimmed.length < 18 || words.length < 4;
 }
 
 function fallbackExplanationCards(text = "", selection = "") {
@@ -408,7 +435,8 @@ function resetLessonAssistState() {
     cropMode: false,
     dragStart: null,
     cropRect: null,
-    cropAction: { open: false, x: 20, y: 20 }
+    cropAction: { open: false, x: 20, y: 20 },
+    hint: ""
   };
 }
 
@@ -418,6 +446,7 @@ function closeLessonMenus({ clearCrop = false } = {}) {
   state.lessonUi.cropAction = { ...state.lessonUi.cropAction, open: false };
   state.lessonUi.cropMode = false;
   state.lessonUi.dragStart = null;
+  state.lessonUi.hint = "";
   if (clearCrop) {
     state.lessonUi.cropRect = null;
   }
@@ -427,8 +456,8 @@ function closeLessonMenus({ clearCrop = false } = {}) {
 function renderLessonOverlay() {
   const parts = [];
 
-  if (state.lessonUi.cropMode) {
-    parts.push(`<div class="lesson-overlay-hint">Arrastra para recortar una imagen, un diagrama o una parte visible de la leccion.</div>`);
+  if (state.lessonUi.cropMode || state.lessonUi.hint) {
+    parts.push(`<div class="lesson-overlay-hint">${escapeHtml(state.lessonUi.hint || "Arrastra para recortar una imagen, un diagrama o una parte visible de la leccion.")}</div>`);
   }
 
   if (state.lessonUi.cropRect) {
@@ -486,16 +515,153 @@ function syncLessonUi() {
 
   const cropButton = document.querySelector('[data-action="toggle-crop-mode"]');
   if (cropButton) {
-    cropButton.textContent = state.lessonUi.cropMode ? "Cancelar recorte" : "Seleccionar recorte";
-    cropButton.classList.toggle("primary", state.lessonUi.cropMode);
-    cropButton.classList.toggle("secondary", !state.lessonUi.cropMode);
+    cropButton.classList.toggle("active", state.lessonUi.cropMode);
   }
+}
+
+function flashcardCountLabel() {
+  return `${state.flashcards.index + 1}/${Math.max(1, state.flashcards.cards.length)}`;
+}
+
+function openFlashcards({ source = "", title = "", subtitle = "", cards = [], sessionId = null }) {
+  state.flashcards = {
+    open: true,
+    source,
+    title,
+    subtitle,
+    cards,
+    index: 0,
+    sessionId
+  };
+}
+
+function closeFlashcards() {
+  state.flashcards = {
+    open: false,
+    source: "",
+    title: "",
+    subtitle: "",
+    cards: [],
+    index: 0,
+    sessionId: null
+  };
+}
+
+function renderModalFlashcardCard(card) {
+  if (card?.kind) {
+    return renderDeckCard(card);
+  }
+
+  return `
+    <article class="flashcard-panel">
+      <p class="tag">${escapeHtml(card?.title || "Tarjeta")}</p>
+      <div class="flashcard-copy">${formatRichText(card?.body || "")}</div>
+    </article>
+  `;
+}
+
+function renderFlashcardModal() {
+  if (!state.flashcards.open || !state.flashcards.cards.length) return "";
+
+  const card = state.flashcards.cards[state.flashcards.index] || state.flashcards.cards[0];
+
+  return `
+    <div class="modal flashcard-modal">
+      <div class="modal-card flashcard-modal-card">
+        <div class="modal-header">
+          <div>
+            <span class="tag">${escapeHtml(flashcardCountLabel())}</span>
+            <h3 style="margin:10px 0 4px;">${escapeHtml(state.flashcards.title || "Tarjetas")}</h3>
+            <p class="muted">${escapeHtml(state.flashcards.subtitle || "")}</p>
+          </div>
+          <button class="ghost-btn" data-action="close-flashcards">Cerrar</button>
+        </div>
+        <div class="flashcard-stage">
+          <button class="flashcard-arrow" data-action="flashcard-prev" ${state.flashcards.index === 0 ? "disabled" : ""}>←</button>
+          <div class="flashcard-content-wrap">
+            ${renderModalFlashcardCard(card)}
+          </div>
+          <button class="flashcard-arrow" data-action="flashcard-next" ${state.flashcards.index >= state.flashcards.cards.length - 1 ? "disabled" : ""}>→</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderStudentPanel() {
+  const summary = currentSummary();
+  const modelLabel = state.settings.currentModel || "Sin modelo";
+
+  return `
+    <div class="student-panel">
+      <div class="student-panel-brand">
+        <strong>TutorMate</strong>
+        <span class="muted">${escapeHtml(summary.displayName)}</span>
+      </div>
+      <button class="student-panel-toggle" data-action="toggle-student-panel" data-section="navigation">
+        <span>🧭 Navegacion</span>
+        <span>${state.studentPanel.navigationOpen ? "▾" : "▸"}</span>
+      </button>
+      ${state.studentPanel.navigationOpen
+        ? `
+          <div class="student-panel-body">
+            ${renderNavButton("lessons", "📚 Lecciones")}
+            ${renderNavButton("practice", "🧠 Estudio")}
+            ${renderNavButton("tracking", "📈 Tracking")}
+            ${renderNavButton("profile", "🙂 Perfil")}
+          </div>
+        `
+        : ""}
+      <button class="student-panel-toggle" data-action="toggle-student-panel" data-section="profile">
+        <span>🙂 Estudiante</span>
+        <span>${state.studentPanel.profileOpen ? "▾" : "▸"}</span>
+      </button>
+      ${state.studentPanel.profileOpen
+        ? `
+          <div class="student-panel-body">
+            <span class="tag">${escapeHtml(summary.focusArea)}</span>
+            <p><strong>${summary.xp} XP</strong> - Nivel ${summary.level}</p>
+            <p class="muted">Meta ${summary.dailyGoalProgress}/${summary.dailyGoal} XP</p>
+            <p class="muted">Conceptos: ${summary.knownConcepts}</p>
+            <p class="muted">Modelo: ${escapeHtml(modelLabel)}</p>
+          </div>
+        `
+        : ""}
+    </div>
+  `;
+}
+
+function recentTutorSessions(limit = 8) {
+  return [...(state.profile.tutorSessions || [])]
+    .sort((left, right) => String(right.ts || "").localeCompare(String(left.ts || "")))
+    .slice(0, limit);
+}
+
+function tutorMetrics() {
+  const sessions = state.profile.tutorSessions || [];
+  const events = sessions.flatMap((session) => session.events || []);
+  const attempts = events.filter((event) => event.type === "step-attempt");
+  const decisions = events.flatMap((event) => event.decisions || []);
+
+  return {
+    sessions: sessions.length,
+    contextHelps: sessions.filter((session) => session.kind === "context-help" || session.kind === "visual-help").length,
+    conceptSessions: sessions.filter((session) => session.kind === "concept").length,
+    exerciseSessions: sessions.filter((session) => session.kind === "exercise").length,
+    correctAttempts: attempts.filter((attempt) => attempt.result === "correct").length,
+    incorrectAttempts: attempts.filter((attempt) => attempt.result === "incorrect").length,
+    ambiguousAttempts: attempts.filter((attempt) => attempt.result === "ambiguous").length,
+    stepsCompleted: events.filter((event) => event.type === "step-complete").length,
+    hintsShown: events.filter((event) => event.type === "hint-open").length,
+    decisionsLogged: decisions.length
+  };
 }
 
 function render() {
   root.innerHTML = renderShell();
   modalRoot.innerHTML = [
     state.settingsOpen ? renderSettingsModal() : "",
+    renderFlashcardModal(),
     state.loadingPanel.open ? renderLoadingPanel() : ""
   ].join("");
   wireLessonFrame();
@@ -514,31 +680,12 @@ function scrollPendingTarget() {
 }
 
 function renderShell() {
-  const summary = currentSummary();
   const meta = pageMeta[state.page];
   const modelLabel = state.settings.currentModel || "Sin modelo";
 
   return `
     <div class="app-shell">
-      <aside class="rail">
-        <div>
-          <h1 class="brand-title">TutorMate</h1>
-          <p class="muted">Electron con Ollama para un tutor local sin backend Python.</p>
-        </div>
-        <div class="stack">
-          ${renderNavButton("lessons", "Lecciones")}
-          ${renderNavButton("practice", "Estudio")}
-          ${renderNavButton("profile", "Perfil")}
-        </div>
-        <section class="summary-card">
-          <div class="tag">${escapeHtml(summary.displayName)}</div>
-          <p><strong>${summary.xp} XP</strong> - Nivel ${summary.level}</p>
-          <p class="muted">Racha ${summary.streakDays} dias - Meta ${summary.dailyGoalProgress}/${summary.dailyGoal} XP</p>
-          <p class="muted">Conceptos registrados: ${summary.knownConcepts}</p>
-          <p class="muted">Runtime: Ollama</p>
-          <p class="muted">Modelo: ${escapeHtml(modelLabel)}</p>
-        </section>
-      </aside>
+      ${renderStudentPanel()}
       <main class="main-card">
         <header class="header">
           <div>
@@ -555,6 +702,7 @@ function renderShell() {
         <section class="page-content">
           ${state.page === "lessons" ? renderLessonsPage() : ""}
           ${state.page === "practice" ? renderPracticePage() : ""}
+          ${state.page === "tracking" ? renderTrackingPage() : ""}
           ${state.page === "profile" ? renderProfilePage() : ""}
         </section>
       </main>
@@ -659,7 +807,7 @@ function renderLessonReader() {
   const visionReady = currentModelSupportsVision() && inferenceReadiness().ready;
 
   return `
-    <div class="reader-panel">
+    <div class="reader-panel reader-panel-single">
       <section class="reader-card">
         <div class="stack reader-stage">
           <div class="card-head">
@@ -671,7 +819,7 @@ function renderLessonReader() {
             <div class="row">
               <button class="btn secondary" data-action="close-lesson">Volver</button>
               ${currentModelSupportsVision()
-                ? `<button class="btn ${state.lessonUi.cropMode ? "primary" : "secondary"}" data-action="toggle-crop-mode">${state.lessonUi.cropMode ? "Cancelar recorte" : "Seleccionar recorte"}</button>`
+                ? `<button class="icon-action-btn ${state.lessonUi.cropMode ? "active" : ""}" data-action="toggle-crop-mode" title="crop image" aria-label="crop image">✂️</button>`
                 : ""}
             </div>
           </div>
@@ -696,11 +844,6 @@ function renderLessonReader() {
           </div>
         </div>
       </section>
-      <aside class="explanation-panel">
-        <h3 style="margin-top:0;">Ayuda contextual</h3>
-        <p class="muted">Selecciona texto y haz clic derecho. Si tu modelo tiene vision, tambien puedes recortar una imagen de la leccion.</p>
-        <div id="lesson-explanation-body">${renderLessonExplanationBody()}</div>
-      </aside>
     </div>
   `;
 }
@@ -895,6 +1038,9 @@ function renderPracticeSession() {
     return "";
   }
 
+  const currentStepIndex = session.currentStepIndex || 0;
+  const currentStep = session.solution?.steps?.[currentStepIndex] || null;
+
   return `
     <section class="practice-session stack">
       ${session.kind === "non_math"
@@ -905,19 +1051,19 @@ function renderPracticeSession() {
           <section class="hero-card stack">
             <div class="card-head">
               <div>
-                <h3 style="margin:0;">Tarjetas de estudio</h3>
+                <h3 style="margin:0;">Tarjetas flotantes</h3>
                 <p class="muted">${escapeHtml(session.deck.topic)}</p>
               </div>
               <span class="tag">${session.deck.cards.length} tarjetas</span>
             </div>
             ${renderStudyTrail(session.deck.focusTrail)}
-            <div class="study-card-grid">
-              ${session.deck.cards.map((card) => renderDeckCard(card)).join("")}
+            <div class="row">
+              <button class="btn primary" data-action="open-session-flashcards">Abrir tarjetas</button>
             </div>
           </section>
         `
         : ""}
-      ${session.solution
+      ${currentStep
         ? `
           <section class="hero-card stack">
             <div class="card-head">
@@ -925,17 +1071,26 @@ function renderPracticeSession() {
                 <h3 style="margin:0;">Solucion guiada</h3>
                 <p class="muted">${escapeHtml(session.solution.exercise || session.topic)}</p>
               </div>
-              <span class="tag">${session.solution.steps.length} pasos</span>
+              <span class="tag">Paso ${currentStepIndex + 1}/${session.solution.steps.length}</span>
             </div>
-            <div class="step-grid">
-              ${session.solution.steps.map((step, index) => renderExerciseStep(step, index)).join("")}
+            <div class="step-grid single-step-grid">
+              ${renderExerciseStep(currentStep, currentStepIndex)}
             </div>
-            <div class="card">
-              <strong>Reflexion final</strong>
-              <p class="muted">${escapeHtml(session.solution.finalReflection || "Comprueba que cada paso tenga sentido antes de seguir al siguiente ejercicio.")}</p>
+            <div class="card tracking-note">
+              <strong>Registro invisible</strong>
+              <p class="muted">Las decisiones del tutor, tutorias simuladas e intentos del estudiante se guardan localmente para el tracking.</p>
             </div>
           </section>
         `
+        : session.solution
+          ? `
+            <section class="hero-card stack">
+              <div class="card">
+                <strong>Ejercicio completado</strong>
+                <p class="muted">${escapeHtml(session.solution.finalReflection || "Comprueba que cada paso tenga sentido antes de seguir al siguiente ejercicio.")}</p>
+              </div>
+            </section>
+          `
         : ""}
     </section>
   `;
@@ -976,7 +1131,7 @@ function renderPracticePage() {
         <aside class="workflow-card stack">
           <div>
             <h3 style="margin-top:0;">Workflow activo</h3>
-            <p class="muted">1. Clasifico la pregunta. 2. Reviso si el concepto ya fue estudiado. 3. Genero tarjetas o pasos para completar.</p>
+            <p class="muted">1. Clasifico la pregunta. 2. Reviso si el concepto ya fue estudiado. 3. Genero tarjetas flotantes o pasos secuenciales.</p>
           </div>
           ${renderSessionSummary()}
           <div class="card stack">
@@ -993,6 +1148,69 @@ function renderPracticePage() {
         </aside>
       </section>
       ${renderPracticeSession()}
+    </div>
+  `;
+}
+
+function renderTrackingPage() {
+  const metrics = tutorMetrics();
+  const sessions = recentTutorSessions(10);
+  const decisionMap = (state.profile.tutorSessions || [])
+    .flatMap((session) => session.events || [])
+    .flatMap((event) => event.decisions || [])
+    .reduce((acc, code) => {
+      acc[code] = (acc[code] || 0) + 1;
+      return acc;
+    }, {});
+
+  return `
+    <div class="stack">
+      <section class="hero-card">
+        <div class="card-head">
+          <div>
+            <h2 style="margin:0;">Tracking del estudiante</h2>
+            <p class="muted">Se reportan sesiones, tutorias invisibles, intentos del estudiante y decisiones registradas localmente.</p>
+          </div>
+          <span class="tag">${metrics.sessions} sesiones</span>
+        </div>
+      </section>
+      <section class="stats-row">
+        <article class="stats-card"><p class="muted">Ayudas</p><strong>${metrics.contextHelps}</strong><span class="muted">texto + imagen</span></article>
+        <article class="stats-card"><p class="muted">Conceptos</p><strong>${metrics.conceptSessions}</strong><span class="muted">sesiones conceptuales</span></article>
+        <article class="stats-card"><p class="muted">Ejercicios</p><strong>${metrics.exerciseSessions}</strong><span class="muted">sesiones guiadas</span></article>
+        <article class="stats-card"><p class="muted">Correctas</p><strong>${metrics.correctAttempts}</strong><span class="muted">intentos buenos</span></article>
+        <article class="stats-card"><p class="muted">Incorrectas</p><strong>${metrics.incorrectAttempts}</strong><span class="muted">intentos a corregir</span></article>
+        <article class="stats-card"><p class="muted">Ambiguas</p><strong>${metrics.ambiguousAttempts}</strong><span class="muted">faltaron detalles</span></article>
+        <article class="stats-card"><p class="muted">Pasos</p><strong>${metrics.stepsCompleted}</strong><span class="muted">pasos completados</span></article>
+        <article class="stats-card"><p class="muted">Decisiones</p><strong>${metrics.decisionsLogged}</strong><span class="muted">acciones del tutor</span></article>
+      </section>
+      <section class="tracking-layout">
+        <div class="path-card stack">
+          <h3 style="margin:0;">Sesiones recientes</h3>
+          ${sessions.length
+            ? sessions.map((session) => `
+                <div class="card tracking-session">
+                  <div class="card-head">
+                    <div>
+                      <strong>${escapeHtml(PRACTICE_KIND_LABELS[session.kind] || session.kind)}</strong>
+                      <p class="muted">${escapeHtml(session.topic || "Sin tema")} - ${escapeHtml(session.status || "active")}</p>
+                    </div>
+                    <span class="tag">${(session.events || []).length} eventos</span>
+                  </div>
+                  <p class="muted">${escapeHtml(session.conceptTopic || "")}</p>
+                </div>
+              `).join("")
+            : `<div class="empty-state">Todavia no hay sesiones registradas.</div>`}
+        </div>
+        <aside class="activity-card stack">
+          <h3 style="margin:0;">Decisiones frecuentes</h3>
+          <div class="card stack">
+            ${Object.entries(decisionMap).sort((left, right) => right[1] - left[1]).slice(0, 8).map(([code, count]) => `
+              <div class="tracking-metric-row"><span>${escapeHtml(code)}</span><strong>${count}</strong></div>
+            `).join("") || `<div class="empty-state">Aun no hay decisiones registradas.</div>`}
+          </div>
+        </aside>
+      </section>
     </div>
   `;
 }
@@ -1397,7 +1615,113 @@ function buildGameState(deck) {
   return gameState;
 }
 
-function preparePracticeSession({ kind, classification, deck = null, solution = null, reusedConcept = false }) {
+function createLocalId(prefix = "session") {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function nextTutorEvent(result, answer = "") {
+  const trimmed = String(answer || "").trim();
+
+  if (!trimmed || trimmed.length < 3) {
+    return {
+      result: "ambiguous",
+      decisions: ["d1", "d2"],
+      message: "Tu respuesta fue muy corta o ambigua. Dame un poco mas de detalle."
+    };
+  }
+
+  if (result === "correct") {
+    return {
+      result: "correct",
+      decisions: ["b1", "b2", "g2"],
+      message: "Bien. Ya puedes pasar al siguiente paso."
+    };
+  }
+
+  return {
+    result: "incorrect",
+    decisions: ["a1", "a2", "a3", "c2"],
+    message: "Todavia no coincide. Usa la pista o reformula la idea principal."
+  };
+}
+
+async function saveProfileState() {
+  await window.bridge.saveProfile(state.profile);
+}
+
+function updateTutorSessionRecord(sessionId, updater) {
+  const sessions = [...(state.profile.tutorSessions || [])];
+  const index = sessions.findIndex((item) => item.id === sessionId);
+  if (index < 0) return;
+  sessions[index] = updater(sessions[index]);
+  state.profile = migrateProfile({
+    ...state.profile,
+    tutorSessions: sessions
+  });
+}
+
+async function appendTutorSessionEvent(sessionId, event) {
+  updateTutorSessionRecord(sessionId, (session) => ({
+    ...session,
+    events: [...(session.events || []), { ...event, ts: event.ts || new Date().toISOString() }]
+  }));
+  await saveProfileState();
+}
+
+async function createTutorSessionRecord({
+  kind,
+  topic,
+  conceptTopic,
+  source,
+  status = "active",
+  hiddenTrace = [],
+  visibleSteps = []
+}) {
+  const id = createLocalId(kind || "session");
+  const record = {
+    id,
+    kind,
+    topic,
+    conceptTopic,
+    source,
+    ts: new Date().toISOString(),
+    status,
+    hiddenTrace,
+    visibleSteps,
+    events: []
+  };
+
+  state.profile = migrateProfile({
+    ...state.profile,
+    tutorSessions: [...(state.profile.tutorSessions || []), record]
+  });
+  await saveProfileState();
+  return id;
+}
+
+async function markTutorSessionStatus(sessionId, status) {
+  updateTutorSessionRecord(sessionId, (session) => ({ ...session, status }));
+  await saveProfileState();
+}
+
+function normalizeContextFlashcards(raw, fallbackTopic, relationText) {
+  const needsMoreContext = Boolean(raw?.needsMoreContext);
+  const followUp = String(raw?.followUp || "").trim();
+  const cards = Array.isArray(raw?.cards) ? raw.cards : [];
+
+  return {
+    needsMoreContext,
+    followUp,
+    topic: String(raw?.topic || fallbackTopic || relationText).trim() || relationText,
+    cards: cards.map((card, index) => ({
+      id: slugify(`${fallbackTopic || relationText}-context-${index + 1}`) || `context-card-${index + 1}`,
+      title: String(card?.title || `Tarjeta ${index + 1}`).trim(),
+      body: String(card?.body || "").trim()
+    }))
+  };
+}
+
+function preparePracticeSession({ kind, classification, deck = null, solution = null, reusedConcept = false, hiddenTrace = [], sessionId = null }) {
   return {
     kind,
     topic: classification.topic,
@@ -1407,10 +1731,13 @@ function preparePracticeSession({ kind, classification, deck = null, solution = 
     deck,
     solution,
     reusedConcept,
+    hiddenTrace,
+    sessionId,
     gameState: deck ? buildGameState(deck) : {},
     stepInputs: {},
     stepResults: {},
-    openHints: {}
+    openHints: {},
+    currentStepIndex: 0
   };
 }
 
@@ -1421,7 +1748,7 @@ async function persistConceptStudy({ topic, relatedTopics = [], status = "studyi
     status,
     source
   });
-  await window.bridge.saveProfile(state.profile);
+  await saveProfileState();
 }
 
 async function maybeMarkCurrentConceptKnown() {
@@ -1434,7 +1761,10 @@ async function maybeMarkCurrentConceptKnown() {
     status: "known",
     source: session.kind === "exercise" ? "exercise-step" : "game-complete"
   });
-  await window.bridge.saveProfile(state.profile);
+  if (session.sessionId) {
+    await markTutorSessionStatus(session.sessionId, "completed");
+  }
+  await saveProfileState();
   render();
 }
 
@@ -1477,6 +1807,15 @@ async function generateExercisePlan(question, classification) {
   return normalizeExercisePlan(safeJsonParse(answer, {}), question, classification);
 }
 
+async function generateExerciseTrace(question) {
+  const answer = await askWithOllama([
+    { role: "system", content: exerciseTracePrompt },
+    { role: "user", content: buildExerciseTraceUserPrompt(question, 4) }
+  ]);
+
+  return Array.isArray(safeJsonParse(answer, [])) ? safeJsonParse(answer, []) : [];
+}
+
 async function handleStudyQuestion(question) {
   const registeredConcepts = knownConcepts(state.profile).map((item) => item.topic);
   const classificationText = await askWithOllama([
@@ -1486,10 +1825,23 @@ async function handleStudyQuestion(question) {
   const classification = normalizeClassifierPayload(safeJsonParse(classificationText, {}), question);
 
   if (classification.kind === "non_math") {
+    const sessionId = await createTutorSessionRecord({
+      kind: "non_math",
+      topic: classification.topic,
+      conceptTopic: classification.conceptTopic,
+      source: "practice-chat",
+      status: "completed"
+    });
+    await appendTutorSessionEvent(sessionId, {
+      type: "classification",
+      decisions: ["h"],
+      detail: classification.reason
+    });
     state.practiceSession = preparePracticeSession({
       kind: "non_math",
       classification,
-      reusedConcept: false
+      reusedConcept: false,
+      sessionId
     });
     state.chatMessages.push({
       role: "bot",
@@ -1500,10 +1852,31 @@ async function handleStudyQuestion(question) {
 
   if (classification.kind === "concept") {
     const deck = await generateStudyDeck(question, classification);
+    const sessionId = await createTutorSessionRecord({
+      kind: "concept",
+      topic: classification.topic,
+      conceptTopic: classification.conceptTopic,
+      source: "practice-chat",
+      visibleSteps: deck.cards.map((card) => card.title),
+      status: "active"
+    });
+    await appendTutorSessionEvent(sessionId, {
+      type: "classification",
+      decisions: ["f1", "f2"],
+      detail: classification.reason
+    });
     state.practiceSession = preparePracticeSession({
       kind: "concept",
       classification,
-      deck
+      deck,
+      sessionId
+    });
+    openFlashcards({
+      source: "practice-deck",
+      title: `Tarjetas de ${deck.topic}`,
+      subtitle: "Navega con las flechas y revisa todas las tarjetas en orden.",
+      cards: deck.cards,
+      sessionId
     });
     state.chatMessages.push({
       role: "bot",
@@ -1523,14 +1896,40 @@ async function handleStudyQuestion(question) {
     || classification.relatedTopics.some((topic) => hasStudiedConcept(state.profile, topic));
   const deck = reusedConcept ? null : await generateStudyDeck(question, classification);
   const solution = await generateExercisePlan(question, classification);
+  const hiddenTrace = await generateExerciseTrace(question);
+  const sessionId = await createTutorSessionRecord({
+    kind: "exercise",
+    topic: classification.topic,
+    conceptTopic: classification.conceptTopic,
+    source: "practice-chat",
+    hiddenTrace,
+    visibleSteps: solution.steps.map((step) => step.title),
+    status: "active"
+  });
+  await appendTutorSessionEvent(sessionId, {
+    type: "classification",
+    decisions: ["g1", reusedConcept ? "b1" : "f1"],
+    detail: classification.reason
+  });
 
   state.practiceSession = preparePracticeSession({
     kind: "exercise",
     classification,
     deck,
     solution,
-    reusedConcept
+    reusedConcept,
+    hiddenTrace,
+    sessionId
   });
+  if (deck) {
+    openFlashcards({
+      source: "practice-deck",
+      title: `Tarjetas de ${deck.topic}`,
+      subtitle: "Estas tarjetas aparecen antes de continuar con el ejercicio.",
+      cards: deck.cards,
+      sessionId
+    });
+  }
   state.chatMessages.push({
     role: "bot",
     text: reusedConcept
@@ -1550,30 +1949,87 @@ async function handleStudyQuestion(question) {
 
 async function runTextExplanation() {
   if (!state.selectedText || !inferenceReadiness().ready) return;
-
-  state.explanation = { open: true, busy: true, cards: [] };
   state.lessonUi.contextMenu = { ...state.lessonUi.contextMenu, open: false };
-  syncLessonUi();
+
+  if (selectionNeedsMoreContext(state.selectedText)) {
+    const sessionId = await createTutorSessionRecord({
+      kind: "context-help",
+      topic: state.selectedText,
+      conceptTopic: "",
+      source: "lesson-text",
+      status: "completed"
+    });
+    await appendTutorSessionEvent(sessionId, {
+      type: "context-check",
+      decisions: ["d1", "d2"],
+      detail: "La seleccion necesita mas contexto."
+    });
+    openFlashcards({
+      source: "context-help",
+      title: "Necesito mas contexto",
+      subtitle: "Selecciona una frase o parrafo mas completo para poder ayudarte.",
+      cards: [
+        {
+          title: "Selecciona mas texto",
+          body: "La parte marcada es muy corta o aislada. Incluye la idea completa, la definicion o el enunciado cercano."
+        }
+      ],
+      sessionId
+    });
+    render();
+    return;
+  }
 
   try {
     const answer = await askWithOllama([
-      { role: "system", content: explainPrompt },
-      { role: "user", content: buildExplainUserPrompt(state.selectedText) }
+      { role: "system", content: contextFlashcardPrompt },
+      { role: "user", content: buildContextFlashcardUserPrompt(state.selectedText) }
     ]);
-    state.explanation = {
-      open: true,
-      busy: false,
-      cards: parseExplanationCards(answer, state.selectedText)
-    };
+    const payload = normalizeContextFlashcards(safeJsonParse(answer, {}), state.selectedText, state.selectedText);
+    const cards = payload.needsMoreContext
+      ? [{
+          title: "Selecciona mas texto",
+          body: payload.followUp || "Necesito una parte mas amplia del enunciado para ayudarte bien."
+        }]
+      : payload.cards.length
+        ? payload.cards
+        : parseExplanationCards(answer, state.selectedText).map((card) => ({ title: card.title, body: card.body }));
+    const sessionId = await createTutorSessionRecord({
+      kind: "context-help",
+      topic: payload.topic,
+      conceptTopic: payload.topic,
+      source: "lesson-text",
+      visibleSteps: cards.map((card) => card.title),
+      status: "completed"
+    });
+    await appendTutorSessionEvent(sessionId, {
+      type: "context-help",
+      decisions: payload.needsMoreContext ? ["d1", "d2"] : ["f1", "f2"],
+      detail: state.selectedText
+    });
+    if (!payload.needsMoreContext && payload.topic) {
+      await persistConceptStudy({
+        topic: payload.topic,
+        status: "introduced",
+        source: "lesson-context"
+      });
+    }
+    openFlashcards({
+      source: "context-help",
+      title: payload.needsMoreContext ? "Necesito mas contexto" : `Ayuda sobre ${payload.topic}`,
+      subtitle: payload.needsMoreContext ? "Selecciona una frase mas completa." : "Tarjetas generadas a partir de tu seleccion.",
+      cards,
+      sessionId
+    });
   } catch (error) {
-    state.explanation = {
-      open: true,
-      busy: false,
-      cards: fallbackExplanationCards(`[Error] ${error.message}`, state.selectedText)
-    };
+    openFlashcards({
+      source: "context-help",
+      title: "No pude generar la ayuda",
+      subtitle: "Intenta seleccionando otra parte de la leccion.",
+      cards: fallbackExplanationCards(`[Error] ${error.message}`, state.selectedText).map((card) => ({ title: card.title, body: card.body }))
+    });
   }
-
-  syncLessonUi();
+  render();
 }
 
 async function runImageExplanation() {
@@ -1581,10 +2037,7 @@ async function runImageExplanation() {
 
   const frame = document.getElementById("lesson-frame");
   if (!frame) return;
-
-  state.explanation = { open: true, busy: true, cards: [] };
   state.lessonUi.cropAction = { ...state.lessonUi.cropAction, open: false };
-  syncLessonUi();
 
   try {
     const frameBounds = frame.getBoundingClientRect();
@@ -1596,28 +2049,53 @@ async function runImageExplanation() {
     });
 
     const answer = await askWithOllama([
-      { role: "system", content: visionExplainPrompt },
+      { role: "system", content: contextFlashcardPrompt },
       {
         role: "user",
-        content: buildExplainImageUserPrompt(),
+        content: buildVisualFlashcardUserPrompt(),
         images: [capture.base64]
       }
     ]);
-
-    state.explanation = {
-      open: true,
-      busy: false,
-      cards: parseExplanationCards(answer, "Recorte visual")
-    };
+    const payload = normalizeContextFlashcards(safeJsonParse(answer, {}), "recorte visual", "recorte visual");
+    const cards = payload.cards.length
+      ? payload.cards
+      : parseExplanationCards(answer, "Recorte visual").map((card) => ({ title: card.title, body: card.body }));
+    const sessionId = await createTutorSessionRecord({
+      kind: "visual-help",
+      topic: payload.topic,
+      conceptTopic: payload.topic,
+      source: "lesson-image",
+      visibleSteps: cards.map((card) => card.title),
+      status: "completed"
+    });
+    await appendTutorSessionEvent(sessionId, {
+      type: "visual-help",
+      decisions: ["f1", "f2"],
+      detail: "Analisis de recorte visual."
+    });
+    if (payload.topic) {
+      await persistConceptStudy({
+        topic: payload.topic,
+        status: "introduced",
+        source: "lesson-image"
+      });
+    }
+    openFlashcards({
+      source: "visual-help",
+      title: `Que es esto? ${payload.topic ? `- ${payload.topic}` : ""}`.trim(),
+      subtitle: "Tarjetas generadas a partir del recorte visual.",
+      cards,
+      sessionId
+    });
   } catch (error) {
-    state.explanation = {
-      open: true,
-      busy: false,
-      cards: fallbackExplanationCards(`[Error] ${error.message}`, "Recorte visual")
-    };
+    openFlashcards({
+      source: "visual-help",
+      title: "No pude analizar el recorte",
+      subtitle: "Intenta hacer un recorte un poco mas grande o mas claro.",
+      cards: fallbackExplanationCards(`[Error] ${error.message}`, "Recorte visual").map((card) => ({ title: card.title, body: card.body }))
+    });
   }
-
-  syncLessonUi();
+  render();
 }
 
 function handleInput(event) {
@@ -1680,6 +2158,34 @@ async function handleClick(event) {
   }
 
   const action = button.dataset.action;
+
+  if (action === "close-flashcards") {
+    closeFlashcards();
+    render();
+    return;
+  }
+
+  if (action === "flashcard-prev") {
+    state.flashcards.index = Math.max(0, state.flashcards.index - 1);
+    render();
+    return;
+  }
+
+  if (action === "flashcard-next") {
+    state.flashcards.index = Math.min(state.flashcards.cards.length - 1, state.flashcards.index + 1);
+    render();
+    return;
+  }
+
+  if (action === "toggle-student-panel") {
+    const section = button.dataset.section;
+    state.studentPanel = {
+      ...state.studentPanel,
+      [`${section}Open`]: !state.studentPanel[`${section}Open`]
+    };
+    render();
+    return;
+  }
 
   if (action === "nav") {
     state.page = button.dataset.page;
@@ -1848,6 +2354,7 @@ async function handleClick(event) {
     const nextMode = !state.lessonUi.cropMode;
     closeLessonMenus({ clearCrop: !nextMode });
     state.lessonUi.cropMode = nextMode;
+    state.lessonUi.hint = nextMode ? "Arrastra sobre la leccion para recortar." : "";
     syncLessonUi();
     return;
   }
@@ -1881,11 +2388,20 @@ async function handleClick(event) {
 
   if (action === "toggle-step-hint" && state.practiceSession) {
     const stepId = button.dataset.stepId;
+    const isOpening = !state.practiceSession.openHints?.[stepId];
     const openHints = {
       ...(state.practiceSession.openHints || {}),
-      [stepId]: !state.practiceSession.openHints?.[stepId]
+      [stepId]: isOpening
     };
     state.practiceSession = { ...state.practiceSession, openHints };
+    if (isOpening && state.practiceSession.sessionId) {
+      await appendTutorSessionEvent(state.practiceSession.sessionId, {
+        type: "hint-open",
+        stepId,
+        decisions: ["a3"],
+        detail: "El estudiante abrio una pista."
+      });
+    }
   }
 
   if (action === "check-step" && state.practiceSession?.solution) {
@@ -1894,20 +2410,60 @@ async function handleClick(event) {
       const value = state.practiceSession.stepInputs?.[step.id] || "";
       const normalizedValue = normalizeLooseAnswer(value);
       const accepted = (step.acceptedAnswers || []).some((answer) => normalizeLooseAnswer(answer) === normalizedValue);
+      const eventMeta = nextTutorEvent(accepted ? "correct" : "incorrect", value);
       const stepResults = {
         ...(state.practiceSession.stepResults || {}),
-        [step.id]: accepted
-          ? { correct: true, message: "Bien. Ya puedes pasar al siguiente paso." }
-          : { correct: false, message: "Todavia no coincide. Usa la pista o reformula la idea principal." }
+        [step.id]: {
+          correct: eventMeta.result === "correct",
+          message: eventMeta.message
+        }
       };
       state.practiceSession = { ...state.practiceSession, stepResults };
+      if (state.practiceSession.sessionId) {
+        await appendTutorSessionEvent(state.practiceSession.sessionId, {
+          type: "step-attempt",
+          stepId: step.id,
+          stepTitle: step.title,
+          answer: value,
+          result: eventMeta.result,
+          decisions: eventMeta.decisions
+        });
+      }
+
+      if (eventMeta.result === "correct") {
+        const nextIndex = (state.practiceSession.currentStepIndex || 0) + 1;
+        state.practiceSession = {
+          ...state.practiceSession,
+          currentStepIndex: nextIndex
+        };
+        if (state.practiceSession.sessionId) {
+          await appendTutorSessionEvent(state.practiceSession.sessionId, {
+            type: "step-complete",
+            stepId: step.id,
+            stepTitle: step.title,
+            decisions: ["g2"]
+          });
+        }
+      }
 
       const allCorrect = state.practiceSession.solution.steps.every((item) => stepResults[item.id]?.correct);
-      if (allCorrect) {
+      if (allCorrect || state.practiceSession.currentStepIndex >= state.practiceSession.solution.steps.length) {
         await maybeMarkCurrentConceptKnown();
         return;
       }
     }
+  }
+
+  if (action === "open-session-flashcards" && state.practiceSession?.deck) {
+    openFlashcards({
+      source: "practice-deck",
+      title: `Tarjetas de ${state.practiceSession.deck.topic}`,
+      subtitle: "Navega por todas las tarjetas con las flechas laterales.",
+      cards: state.practiceSession.deck.cards,
+      sessionId: state.practiceSession.sessionId
+    });
+    render();
+    return;
   }
 
   render();
@@ -1961,6 +2517,15 @@ async function handleDrop(event) {
     game.feedback = correct
       ? "Relacionaste correctamente todos los conceptos."
       : "Hay algunas conexiones que no coinciden. Ajustalas y vuelve a intentarlo.";
+
+    if (state.practiceSession.sessionId) {
+      await appendTutorSessionEvent(state.practiceSession.sessionId, {
+        type: "game-result",
+        gameId: payload.gameId,
+        result: correct ? "correct" : "incorrect",
+        decisions: correct ? ["g2"] : ["c1", "c2"]
+      });
+    }
 
     if (correct) {
       await maybeMarkCurrentConceptKnown();

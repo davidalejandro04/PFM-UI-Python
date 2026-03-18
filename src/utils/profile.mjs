@@ -10,7 +10,8 @@ export const defaultProfile = {
   lessonsCompleted: 0,
   completed: [],
   activity: [],
-  conceptProgress: []
+  conceptProgress: [],
+  tutorSessions: []
 };
 
 const XP_PER_LEVEL = 40;
@@ -92,13 +93,28 @@ export function migrateProfile(input = {}) {
         .map((item) => normalizeConceptEntry(item))
         .filter(Boolean)
     : [];
+  const tutorSessions = Array.isArray(input.tutorSessions)
+    ? input.tutorSessions.map((session) => ({
+        id: String(session?.id || "").trim(),
+        kind: String(session?.kind || "practice").trim(),
+        topic: String(session?.topic || "").trim(),
+        conceptTopic: String(session?.conceptTopic || "").trim(),
+        source: String(session?.source || "").trim(),
+        ts: session?.ts || nowIso(),
+        status: String(session?.status || "active").trim(),
+        hiddenTrace: Array.isArray(session?.hiddenTrace) ? session.hiddenTrace : [],
+        visibleSteps: Array.isArray(session?.visibleSteps) ? session.visibleSteps : [],
+        events: Array.isArray(session?.events) ? session.events : []
+      }))
+    : [];
 
   return {
     ...defaultProfile,
     ...input,
     completed: Array.isArray(input.completed) ? input.completed : [],
     activity: Array.isArray(input.activity) ? input.activity : [],
-    conceptProgress
+    conceptProgress,
+    tutorSessions
   };
 }
 
@@ -152,7 +168,8 @@ export function resetProgress(profile) {
     lessonsCompleted: 0,
     completed: [],
     activity: [],
-    conceptProgress: []
+    conceptProgress: [],
+    tutorSessions: []
   });
 }
 
