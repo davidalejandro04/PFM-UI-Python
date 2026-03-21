@@ -35,8 +35,73 @@
       "file": "./units/05-medicion-y-estimacion-3-y-5/unit.json"
     },
     {
-      "id": "unit-06-geometria-1-triangulos",
+      "id": "unit-06-calculo-mental-y-operaciones-3",
       "order": 6,
+      "file": "./units/06-calculo-mental-y-operaciones-3/unit.json"
+    },
+    {
+      "id": "unit-07-multiplicacion-3",
+      "order": 7,
+      "file": "./units/07-multiplicacion-3/unit.json"
+    },
+    {
+      "id": "unit-08-figuras-geometricas-3",
+      "order": 8,
+      "file": "./units/08-figuras-geometricas-3/unit.json"
+    },
+    {
+      "id": "unit-09-numeros-grandes-y-valor-posicional-5",
+      "order": 9,
+      "file": "./units/09-numeros-grandes-y-valor-posicional-5/unit.json"
+    },
+    {
+      "id": "unit-10-multiplicacion-y-division-5",
+      "order": 10,
+      "file": "./units/10-multiplicacion-y-division-5/unit.json"
+    },
+    {
+      "id": "unit-11-multiplos-divisores-y-primos-5",
+      "order": 11,
+      "file": "./units/11-multiplos-divisores-y-primos-5/unit.json"
+    },
+    {
+      "id": "unit-12-fracciones-avanzadas-5",
+      "order": 12,
+      "file": "./units/12-fracciones-avanzadas-5/unit.json"
+    },
+    {
+      "id": "unit-13-operaciones-con-fracciones-5",
+      "order": 13,
+      "file": "./units/13-operaciones-con-fracciones-5/unit.json"
+    },
+    {
+      "id": "unit-14-decimales-y-porcentajes-5",
+      "order": 14,
+      "file": "./units/14-decimales-y-porcentajes-5/unit.json"
+    },
+    {
+      "id": "unit-15-geometria-angulos-y-poligonos-5",
+      "order": 15,
+      "file": "./units/15-geometria-angulos-y-poligonos-5/unit.json"
+    },
+    {
+      "id": "unit-16-proporcionalidad-y-areas-5",
+      "order": 16,
+      "file": "./units/16-proporcionalidad-y-areas-5/unit.json"
+    },
+    {
+      "id": "unit-17-estadistica-y-medidas-5",
+      "order": 17,
+      "file": "./units/17-estadistica-y-medidas-5/unit.json"
+    },
+    {
+      "id": "unit-18-resolucion-de-problemas-3-y-5",
+      "order": 18,
+      "file": "./units/18-resolucion-de-problemas-3-y-5/unit.json"
+    },
+    {
+      "id": "unit-06-geometria-1-triangulos",
+      "order": 19,
       "file": "./units/01-geometria-1-triangulos/unit.json"
     }
   ]
