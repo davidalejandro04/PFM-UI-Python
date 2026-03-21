@@ -22,6 +22,8 @@ import {
   unitProgress
 } from "./utils/lessons.mjs";
 import { wrapStageHtml } from "./utils/content.mjs";
+import { resolveAgentModels } from "./utils/agents/model-config.mjs";
+import { runTutorPipeline, runTurnPipeline, runProgressPipeline } from "./utils/agents/pipeline.mjs";
 import {
   buildKidMathGateUserPrompt,
   buildClassifierUserPrompt,
@@ -77,7 +79,11 @@ const DEFAULT_SETTINGS = {
   currentModel: "",
   ollamaBaseUrl: "http://127.0.0.1:11434",
   responseMode: "coach",
-  theme: "light"
+  theme: "light",
+  agentMode: false,
+  agentRouterModel: "",
+  agentTutorModel: "",
+  agentFunctionModel: ""
 };
 
 const PRACTICE_KIND_LABELS = {
@@ -167,6 +173,23 @@ const state = {
     open: false,
     index: 0
   },
+  trackingDetail: {
+    open: false,
+    actionCode: null
+  },
+  trackingSections: {
+    actions: true,
+    concepts: false,
+    alerts: false,
+    flashcards: false,
+    sessions: false
+  },
+  studentAnalysis: {
+    open: false,
+    busy: false,
+    text: ""
+  },
+  deleteProfileConfirm: false,
   lessonUi: {
     scroll: { x: 0, y: 0 },
     contextMenu: { open: false, x: 20, y: 20 },
@@ -869,7 +892,10 @@ function tutorMetrics() {
     ambiguousAttempts: attempts.filter((attempt) => attempt.result === "ambiguous").length,
     stepsCompleted: events.filter((event) => event.type === "step-complete").length,
     hintsShown: events.filter((event) => event.type === "hint-open").length,
-    decisionsLogged: decisions.length
+    decisionsLogged: decisions.length,
+    interactionsLogged: (state.profile.interactionLog || []).length,
+    feedbackUp: (state.profile.interactionLog || []).filter((e) => e.feedback === "up").length,
+    feedbackDown: (state.profile.interactionLog || []).filter((e) => e.feedback === "down").length
   };
 }
 
@@ -958,6 +984,8 @@ function render() {
     state.settingsOpen ? renderSettingsModal() : "",
     renderFlashcardModal(),
     renderExerciseOverlayModal(),
+    renderTrackingDetailModal(),
+    renderStudentAnalysisModal(),
     state.loadingPanel.open ? renderLoadingPanel() : ""
   ].join("");
   wireLessonFrame();
@@ -1163,8 +1191,8 @@ function renderSessionSummary() {
   `;
 }
 
-function renderKnownConceptChips(limit = 8) {
-  const concepts = knownConcepts(state.profile).slice(0, limit);
+function renderKnownConceptChips() {
+  const concepts = knownConcepts(state.profile);
   if (!concepts.length) {
     return `<div class="empty-state">Aun no hay conceptos registrados para este estudiante.</div>`;
   }
@@ -1301,7 +1329,10 @@ function renderDeckCard(card) {
 function renderExerciseStep(step, index) {
   const inputValue = state.practiceSession?.stepInputs?.[step.id] || "";
   const result = state.practiceSession?.stepResults?.[step.id] || null;
-  const hintOpen = Boolean(state.practiceSession?.openHints?.[step.id]);
+  const hintLevel = state.practiceSession?.hintLevels?.[step.id] || 0;
+  const hints = step.hintLadder && step.hintLadder.length ? step.hintLadder : [step.hint || "Sin pista disponible."];
+  const maxHints = hints.length;
+  const hintBtnLabel = hintLevel === 0 ? "Pedir pista" : hintLevel < maxHints ? `Siguiente pista (${hintLevel}/${maxHints})` : "Ocultar pistas";
 
   return `
     <article class="card step-card ${result?.correct ? "done" : ""}">
@@ -1316,11 +1347,18 @@ function renderExerciseStep(step, index) {
       <textarea data-step-input-id="${escapeHtml(step.id)}" placeholder="Completa este paso...">${escapeHtml(inputValue)}</textarea>
       <div class="row">
         <button class="btn primary" data-action="check-step" data-step-id="${escapeHtml(step.id)}">Comprobar</button>
-        <button class="btn secondary" data-action="toggle-step-hint" data-step-id="${escapeHtml(step.id)}">${hintOpen ? "Ocultar pista" : "Mostrar pista"}</button>
+        <button class="btn secondary" data-action="toggle-step-hint" data-step-id="${escapeHtml(step.id)}">${hintBtnLabel}</button>
       </div>
       ${result?.attempts ? `<p class="muted">Intentos en este paso: ${result.attempts}${result.failures ? ` · fallos marcados: ${result.failures}` : ""}</p>` : ""}
-      ${hintOpen ? `<p class="muted">${escapeHtml(step.hint || "Sin pista disponible.")}</p>` : ""}
+      ${hintLevel > 0 ? `<div class="hint-ladder">${hints.slice(0, hintLevel).map((h, i) => `<p class="muted">${i === maxHints - 1 ? "✅" : "💡"} Pista ${i + 1}: ${escapeHtml(h)}</p>`).join("")}</div>` : ""}
       ${result?.message ? `<p class="muted">${escapeHtml(result.message)}</p>` : ""}
+      ${result?.message && result?.interactionId ? `
+        <div class="feedback-row">
+          <span class="muted">¿La evaluacion fue correcta?</span>
+          <button class="feedback-btn ${result.feedback === "up" ? "active" : ""}" data-action="feedback-thumb" data-interaction-id="${escapeHtml(result.interactionId)}" data-thumb="up" data-step-id="${escapeHtml(step.id)}">👍</button>
+          <button class="feedback-btn ${result.feedback === "down" ? "active" : ""}" data-action="feedback-thumb" data-interaction-id="${escapeHtml(result.interactionId)}" data-thumb="down" data-step-id="${escapeHtml(step.id)}">👎</button>
+        </div>
+      ` : ""}
       ${result?.correct ? `<div class="study-copy">${formatRichText(step.explanation || "")}</div>` : ""}
     </article>
   `;
@@ -1447,16 +1485,176 @@ function renderPracticePage() {
   `;
 }
 
+const ACTION_CATALOG = [
+  { code: "a1", label: "Feedback correctivo (error detectado)", category: "Feedback", color: "#e74c3c" },
+  { code: "a2", label: "Feedback correctivo (explicacion)", category: "Feedback", color: "#e74c3c" },
+  { code: "a3", label: "Pista entregada", category: "Pistas", color: "#f39c12" },
+  { code: "b1", label: "Confirmar respuesta correcta", category: "Avance", color: "#27ae60" },
+  { code: "b2", label: "Avanzar / motivar", category: "Avance", color: "#2ecc71" },
+  { code: "c1", label: "Pista media", category: "Pistas", color: "#f1c40f" },
+  { code: "c2", label: "Pista fuerte / solucion parcial", category: "Pistas", color: "#e67e22" },
+  { code: "c3", label: "Subpregunta de apoyo", category: "Scaffolding", color: "#3498db" },
+  { code: "d1", label: "Solicitar aclaracion", category: "Aclaracion", color: "#9b59b6" },
+  { code: "d2", label: "Solicitar mas contexto", category: "Aclaracion", color: "#8e44ad" },
+  { code: "f1", label: "Clasificacion inicial", category: "Sistema", color: "#95a5a6" },
+  { code: "g1", label: "Dar solucion completa", category: "Solucion", color: "#e74c3c" },
+  { code: "g2", label: "Paso completado", category: "Avance", color: "#27ae60" },
+  { code: "h", label: "Redireccion (fuera de tema)", category: "Redireccion", color: "#7f8c8d" }
+];
+
+function renderActionGraph(decisionMap) {
+  const maxCount = Math.max(1, ...Object.values(decisionMap));
+  const totalDecisions = Object.values(decisionMap).reduce((sum, v) => sum + v, 0);
+
+  if (!totalDecisions) {
+    return `<div class="empty-state">Aun no hay acciones registradas. Usa el modo agente para generar datos.</div>`;
+  }
+
+  // Group by category
+  const categories = [];
+  const seen = new Set();
+  for (const item of ACTION_CATALOG) {
+    if (!seen.has(item.category)) {
+      seen.add(item.category);
+      categories.push(item.category);
+    }
+  }
+
+  return `
+    <div class="action-graph">
+      ${categories.map((cat) => {
+        const items = ACTION_CATALOG.filter((a) => a.category === cat);
+        const catTotal = items.reduce((sum, a) => sum + (decisionMap[a.code] || 0), 0);
+        if (!catTotal) return "";
+        return `
+          <div class="action-graph-category">
+            <div class="action-graph-category-header">
+              <span class="action-graph-category-name">${escapeHtml(cat)}</span>
+              <span class="muted">${catTotal}</span>
+            </div>
+            ${items.map(({ code, label, color }) => {
+              const count = decisionMap[code] || 0;
+              if (!count) return "";
+              const pct = Math.round((count / maxCount) * 100);
+              return `
+                <button class="action-graph-row" data-action="tracking-action-detail" data-action-code="${escapeHtml(code)}">
+                  <span class="action-graph-code" style="background:${color};color:#fff;">${escapeHtml(code)}</span>
+                  <span class="action-graph-label">${escapeHtml(label)}</span>
+                  <div class="action-graph-bar-wrap">
+                    <div class="action-graph-bar" style="width:${pct}%;background:${color};"></div>
+                  </div>
+                  <span class="action-graph-count">${count}</span>
+                </button>
+              `;
+            }).join("")}
+          </div>
+        `;
+      }).join("")}
+      <div class="action-graph-total">
+        <span class="muted">Total de acciones registradas:</span>
+        <strong>${totalDecisions}</strong>
+      </div>
+    </div>
+  `;
+}
+
+function renderStudentAnalysisModal() {
+  if (!state.studentAnalysis.open) return "";
+  return `
+    <div class="modal flashcard-modal">
+      <div class="modal-card flashcard-modal-card" style="max-width:740px;">
+        <div class="modal-header">
+          <div>
+            <span class="tag">BETA</span>
+            <h3 style="margin:8px 0 4px;">Análisis de estudiante</h3>
+            <p class="muted">Generado con IA a partir de las interacciones registradas. No es un diagnostico clinico.</p>
+          </div>
+          <button class="ghost-btn" data-action="close-student-analysis">Cerrar</button>
+        </div>
+        <div style="max-height:62vh;overflow-y:auto;padding:0 4px;">
+          ${state.studentAnalysis.busy
+            ? `<div class="empty-state" style="padding:40px 0;">
+                <span style="font-size:28px;">🔍</span>
+                <p>Analizando interacciones del estudiante...</p>
+              </div>`
+            : `<div class="student-analysis-text">${formatRichText(state.studentAnalysis.text)}</div>`}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTrackingDetailModal() {
+  if (!state.trackingDetail.open || !state.trackingDetail.actionCode) return "";
+  const code = state.trackingDetail.actionCode;
+  const catalogEntry = ACTION_CATALOG.find((a) => a.code === code);
+  const interactions = getInteractionsForAction(code);
+
+  return `
+    <div class="modal flashcard-modal">
+      <div class="modal-card flashcard-modal-card" style="max-width:700px;">
+        <div class="modal-header">
+          <div>
+            <span class="action-graph-code" style="background:${catalogEntry?.color || "#888"};color:#fff;">${escapeHtml(code)}</span>
+            <h3 style="margin:8px 0 4px;">${escapeHtml(catalogEntry?.label || code)}</h3>
+            <p class="muted">${interactions.length} interacciones registradas</p>
+          </div>
+          <button class="ghost-btn" data-action="close-tracking-detail">Cerrar</button>
+        </div>
+        <div class="stack" style="max-height:60vh;overflow-y:auto;padding:0 4px;">
+          ${interactions.length
+            ? interactions.map((entry) => `
+                <div class="card interaction-card">
+                  <div class="interaction-row">
+                    <span class="interaction-label">Pregunta</span>
+                    <span>${escapeHtml(entry.question || "—")}</span>
+                  </div>
+                  <div class="interaction-row">
+                    <span class="interaction-label">Respuesta</span>
+                    <span>${escapeHtml(entry.answer || "—")}</span>
+                  </div>
+                  <div class="interaction-row">
+                    <span class="interaction-label">Accion</span>
+                    <span class="tag">${escapeHtml(entry.actionTaken || "—")}</span>
+                  </div>
+                  <div class="interaction-row">
+                    <span class="interaction-label">Feedback</span>
+                    <span>${entry.feedback === "up" ? "👍" : entry.feedback === "down" ? "👎" : "—"}</span>
+                  </div>
+                  <p class="muted" style="margin:4px 0 0;">${escapeHtml(entry.ts ? new Date(entry.ts).toLocaleString() : "")}</p>
+                </div>
+              `).join("")
+            : `<div class="empty-state">No hay interacciones registradas para esta accion.</div>`}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTrackingDropdown(key, title, badge, content) {
+  const open = state.trackingSections[key] !== false;
+  return `
+    <section class="tracking-dropdown card">
+      <button class="tracking-dropdown-toggle" data-action="toggle-tracking-section" data-section="${escapeHtml(key)}">
+        <div class="tracking-dropdown-title">
+          <span>${escapeHtml(title)}</span>
+          ${badge !== null ? `<span class="tag">${badge}</span>` : ""}
+        </div>
+        <span class="tracking-dropdown-chevron">${open ? "▾" : "▸"}</span>
+      </button>
+      ${open ? `<div class="tracking-dropdown-body">${content}</div>` : ""}
+    </section>
+  `;
+}
+
 function renderTrackingPage() {
   const metrics = tutorMetrics();
   const sessions = recentTutorSessions(10);
-  const concepts = conceptMetrics().slice(0, 12);
+  const concepts = conceptMetrics();
   const struggleSignals = [...(state.profile.struggleSignals || [])]
-    .sort((left, right) => String(right.lastDetectedAt || right.ts || "").localeCompare(String(left.lastDetectedAt || left.ts || "")))
-    .slice(0, 8);
+    .sort((left, right) => String(right.lastDetectedAt || right.ts || "").localeCompare(String(left.lastDetectedAt || left.ts || "")));
   const lessonFlashcardGroups = [...(state.profile.lessonFlashcards || [])]
-    .sort((left, right) => String(right.updatedAt || right.ts || "").localeCompare(String(left.updatedAt || left.ts || "")))
-    .slice(0, 8);
+    .sort((left, right) => String(right.updatedAt || right.ts || "").localeCompare(String(left.updatedAt || left.ts || "")));
   const decisionMap = (state.profile.tutorSessions || [])
     .flatMap((session) => session.events || [])
     .flatMap((event) => event.decisions || [])
@@ -1465,113 +1663,44 @@ function renderTrackingPage() {
       return acc;
     }, {});
 
+  const analysisDisabled = state.studentAnalysis.busy || !state.settings.currentModel;
+
   return `
     <div class="stack">
       <section class="hero-card">
         <div class="card-head">
           <div>
             <h2 style="margin:0;">Tracking del estudiante</h2>
-            <p class="muted">Se reportan sesiones, tutorias invisibles, intentos del estudiante y decisiones registradas localmente.</p>
+            <p class="muted">Sesiones, tutorias, intentos y acciones registradas localmente.</p>
           </div>
-          <span class="tag">${metrics.sessions} sesiones</span>
+          <div class="row">
+            <button class="btn secondary" data-action="open-student-analysis" ${analysisDisabled ? "disabled" : ""}>
+              ${state.studentAnalysis.busy ? "Analizando..." : "Generar análisis de estudiante (BETA)"}
+            </button>
+            <span class="tag">${metrics.sessions} sesiones</span>
+          </div>
         </div>
       </section>
       <section class="stats-row">
         <article class="stats-card"><p class="muted">Ayudas</p><strong>${metrics.contextHelps}</strong><span class="muted">texto + imagen</span></article>
-        <article class="stats-card"><p class="muted">Conceptos</p><strong>${metrics.conceptSessions}</strong><span class="muted">sesiones conceptuales</span></article>
+        <article class="stats-card"><p class="muted">Conceptos</p><strong>${metrics.conceptSessions}</strong><span class="muted">sesiones</span></article>
         <article class="stats-card"><p class="muted">Ejercicios</p><strong>${metrics.exerciseSessions}</strong><span class="muted">sesiones guiadas</span></article>
         <article class="stats-card"><p class="muted">Correctas</p><strong>${metrics.correctAttempts}</strong><span class="muted">intentos buenos</span></article>
-        <article class="stats-card"><p class="muted">Incorrectas</p><strong>${metrics.incorrectAttempts}</strong><span class="muted">intentos a corregir</span></article>
-        <article class="stats-card"><p class="muted">Ambiguas</p><strong>${metrics.ambiguousAttempts}</strong><span class="muted">faltaron detalles</span></article>
-        <article class="stats-card"><p class="muted">Alertas</p><strong>${metrics.struggleSignals}</strong><span class="muted">pasos marcados</span></article>
-        <article class="stats-card"><p class="muted">Tarjetas</p><strong>${metrics.savedFlashcardSets}</strong><span class="muted">${metrics.savedFlashcardGroups} grupos tematicos</span></article>
-        <article class="stats-card"><p class="muted">Pasos</p><strong>${metrics.stepsCompleted}</strong><span class="muted">pasos completados</span></article>
-        <article class="stats-card"><p class="muted">Decisiones</p><strong>${metrics.decisionsLogged}</strong><span class="muted">acciones del tutor</span></article>
+        <article class="stats-card"><p class="muted">Incorrectas</p><strong>${metrics.incorrectAttempts}</strong><span class="muted">a corregir</span></article>
+        <article class="stats-card"><p class="muted">Ambiguas</p><strong>${metrics.ambiguousAttempts}</strong><span class="muted">sin detalles</span></article>
+        <article class="stats-card"><p class="muted">Alertas</p><strong>${metrics.struggleSignals}</strong><span class="muted">marcados</span></article>
+        <article class="stats-card"><p class="muted">Pasos</p><strong>${metrics.stepsCompleted}</strong><span class="muted">completados</span></article>
+        <article class="stats-card"><p class="muted">Acciones</p><strong>${metrics.decisionsLogged}</strong><span class="muted">tomadas</span></article>
+        <article class="stats-card"><p class="muted">Interacciones</p><strong>${metrics.interactionsLogged}</strong><span class="muted">registradas</span></article>
+        <article class="stats-card"><p class="muted">Feedback</p><strong>👍 ${metrics.feedbackUp} · 👎 ${metrics.feedbackDown}</strong><span class="muted">valoraciones</span></article>
       </section>
-      <section class="tracking-layout">
-        <div class="path-card stack">
-          <h3 style="margin:0;">Sesiones recientes</h3>
-          ${sessions.length
-            ? sessions.map((session) => `
-                <div class="card tracking-session">
-                  <div class="card-head">
-                    <div>
-                      <strong>${escapeHtml(PRACTICE_KIND_LABELS[session.kind] || session.kind)}</strong>
-                      <p class="muted">${escapeHtml(session.topic || "Sin tema")} - ${escapeHtml(session.status || "active")}</p>
-                    </div>
-                    <span class="tag">${(session.events || []).length} eventos</span>
-                  </div>
-                  <p class="muted">${escapeHtml(session.conceptTopic || "")}</p>
-                </div>
-              `).join("")
-            : `<div class="empty-state">Todavia no hay sesiones registradas.</div>`}
-        </div>
-        <aside class="activity-card stack">
-          <h3 style="margin:0;">Decisiones frecuentes</h3>
-          <div class="card stack">
-            ${Object.entries(decisionMap).sort((left, right) => right[1] - left[1]).slice(0, 8).map(([code, count]) => `
-              <div class="tracking-metric-row"><span>${escapeHtml(code)}</span><strong>${count}</strong></div>
-            `).join("") || `<div class="empty-state">Aun no hay decisiones registradas.</div>`}
-          </div>
-        </aside>
-      </section>
-      <section class="card stack">
-        <div class="card-head">
-          <div>
-            <h3 style="margin:0;">Tarjetas guardadas por leccion</h3>
-            <p class="muted">Las ayudas de texto e imagen quedan almacenadas por unidad, leccion y tema detectado.</p>
-          </div>
-          <span class="tag">${lessonFlashcardGroups.length} grupos visibles</span>
-        </div>
-        <div class="stack">
-          ${lessonFlashcardGroups.length
-            ? lessonFlashcardGroups.map((group) => `
-                <div class="card tracking-session">
-                  <div class="card-head">
-                    <div>
-                      <strong>${escapeHtml(group.theme || "Tema de leccion")}</strong>
-                      <p class="muted">${escapeHtml(group.unit || "Sin unidad")} · ${escapeHtml(group.lessonTitle || "Sin leccion")}</p>
-                    </div>
-                    <span class="tag">${(group.entries || []).length} sets</span>
-                  </div>
-                </div>
-              `).join("")
-            : `<div class="empty-state">Todavia no hay tarjetas guardadas por contenido de leccion.</div>`}
-        </div>
-      </section>
-      <section class="card stack">
-        <div class="card-head">
-          <div>
-            <h3 style="margin:0;">Alertas de apoyo</h3>
-            <p class="muted">Cuando un paso llega a tres fallos, se marca el concepto y la etapa para el reporte del estudiante.</p>
-          </div>
-          <span class="tag">${struggleSignals.length} alertas visibles</span>
-        </div>
-        <div class="stack">
-          ${struggleSignals.length
-            ? struggleSignals.map((signal) => `
-                <div class="card tracking-session">
-                  <div class="card-head">
-                    <div>
-                      <strong>${escapeHtml(signal.conceptTopic || signal.topic || "Sin concepto")}</strong>
-                      <p class="muted">${escapeHtml(signal.stepTitle || signal.stepId || "Paso sin titulo")}</p>
-                    </div>
-                    <span class="tag">${signal.failures} fallos</span>
-                  </div>
-                  <div class="tracking-metric-row"><span>Ocurrencias</span><strong>${signal.occurrences || 1}</strong></div>
-                </div>
-              `).join("")
-            : `<div class="empty-state">Todavia no hay pasos marcados por dificultad.</div>`}
-        </div>
-      </section>
-      <section class="card stack">
-        <div class="card-head">
-          <div>
-            <h3 style="margin:0;">Acumulado por concepto</h3>
-            <p class="muted">Cada accion del tutor se conserva asociada a su concepto principal y se resume en estas metricas.</p>
-          </div>
-          <span class="tag">${concepts.length} conceptos</span>
-        </div>
+
+      ${renderTrackingDropdown("actions", "Acciones tomadas", `${metrics.decisionsLogged} acciones`, `
+        <p class="muted" style="margin-bottom:12px;">Acciones pedagogicas del sistema agente. Haz clic en una barra para ver las interacciones.</p>
+        ${renderActionGraph(decisionMap)}
+      `)}
+
+      ${renderTrackingDropdown("concepts", "Acumulado por concepto", `${concepts.length} conceptos`, `
         <div class="lesson-grid concept-metric-grid">
           ${concepts.length
             ? concepts.map((concept) => `
@@ -1595,7 +1724,64 @@ function renderTrackingPage() {
               `).join("")
             : `<div class="empty-state">Todavia no hay conceptos con acciones registradas.</div>`}
         </div>
-      </section>
+      `)}
+
+      ${renderTrackingDropdown("alerts", "Alertas de apoyo", `${struggleSignals.length} alertas`, `
+        <p class="muted" style="margin-bottom:8px;">Cuando un paso llega a dos fallos, se marca el concepto y la etapa.</p>
+        <div class="stack">
+          ${struggleSignals.length
+            ? struggleSignals.map((signal) => `
+                <div class="card tracking-session">
+                  <div class="card-head">
+                    <div>
+                      <strong>${escapeHtml(signal.conceptTopic || signal.topic || "Sin concepto")}</strong>
+                      <p class="muted">${escapeHtml(signal.stepTitle || signal.stepId || "Paso sin titulo")}</p>
+                    </div>
+                    <span class="tag">${signal.failures} fallos</span>
+                  </div>
+                  <div class="tracking-metric-row"><span>Ocurrencias</span><strong>${signal.occurrences || 1}</strong></div>
+                </div>
+              `).join("")
+            : `<div class="empty-state">Todavia no hay pasos marcados por dificultad.</div>`}
+        </div>
+      `)}
+
+      ${renderTrackingDropdown("flashcards", "Tarjetas guardadas por leccion", `${lessonFlashcardGroups.length} grupos`, `
+        <div class="stack">
+          ${lessonFlashcardGroups.length
+            ? lessonFlashcardGroups.map((group) => `
+                <div class="card tracking-session">
+                  <div class="card-head">
+                    <div>
+                      <strong>${escapeHtml(group.theme || "Tema de leccion")}</strong>
+                      <p class="muted">${escapeHtml(group.unit || "Sin unidad")} · ${escapeHtml(group.lessonTitle || "Sin leccion")}</p>
+                    </div>
+                    <span class="tag">${(group.entries || []).length} sets</span>
+                  </div>
+                </div>
+              `).join("")
+            : `<div class="empty-state">Todavia no hay tarjetas guardadas por contenido de leccion.</div>`}
+        </div>
+      `)}
+
+      ${renderTrackingDropdown("sessions", "Sesiones recientes", `${sessions.length} sesiones`, `
+        <div class="stack">
+          ${sessions.length
+            ? sessions.map((session) => `
+                <div class="card tracking-session">
+                  <div class="card-head">
+                    <div>
+                      <strong>${escapeHtml(PRACTICE_KIND_LABELS[session.kind] || session.kind)}</strong>
+                      <p class="muted">${escapeHtml(session.topic || "Sin tema")} · ${escapeHtml(session.status || "active")}</p>
+                    </div>
+                    <span class="tag">${(session.events || []).length} eventos</span>
+                  </div>
+                  <p class="muted">${escapeHtml(session.conceptTopic || "")}</p>
+                </div>
+              `).join("")
+            : `<div class="empty-state">Todavia no hay sesiones registradas.</div>`}
+        </div>
+      `)}
     </div>
   `;
 }
@@ -1607,7 +1793,7 @@ function renderProfilePage() {
   }
 
   const suggestion = currentSuggestion();
-  const conceptItems = knownConcepts(state.profile).slice(0, 8);
+  const conceptItems = knownConcepts(state.profile);
   const pathItems = flattenLessons(state.lessons).map((lesson) => {
     const done = currentCompletedSet().has(`${lesson.unit}::${lesson.title}`);
     const current = suggestion && suggestion.unit === lesson.unit && suggestion.title === lesson.title;
@@ -1670,6 +1856,15 @@ function renderProfilePage() {
               : `<div class="empty-state">Aun no hay conceptos guardados.</div>`}
           </div>
           <button class="btn secondary" data-action="reset-progress">Reiniciar progreso</button>
+          ${state.deleteProfileConfirm
+            ? `<div class="delete-confirm-box">
+                <p>¿Seguro que quieres <strong>eliminar completamente</strong> el perfil de ${escapeHtml(state.profile.name || "este estudiante")}? Esta accion no se puede deshacer.</p>
+                <div class="row">
+                  <button class="btn primary" data-action="cancel-delete-profile">Cancelar</button>
+                  <button class="btn danger" data-action="confirm-delete-profile">Eliminar perfil</button>
+                </div>
+              </div>`
+            : `<button class="btn danger" data-action="delete-profile">Eliminar perfil</button>`}
         </aside>
       </section>
     </div>
@@ -1782,6 +1977,43 @@ function renderSettingsModal() {
               `).join("")}
             </select>
           </label>
+          <div class="card stack">
+            <div>
+              <strong>Modo agente CLASS-A</strong>
+              <p class="muted">Activa el pipeline multiagente para tutoria adaptativa. Cada pregunta pasa por Enrutador → Modelo del Estudiante → Planificador → Decision Pedagogica → Tutor → Verificador.</p>
+            </div>
+            <label style="flex-direction:row;align-items:center;gap:0.75rem;">
+              <input type="checkbox" data-settings-checkbox="agentMode" ${draft.agentMode ? "checked" : ""} />
+              <span>Activar modo agente</span>
+            </label>
+            <label>
+              <span class="muted">Modelo enrutador (rapido) — recomendado: qwen3.5:0.8b</span>
+              <select data-settings-field="agentRouterModel">
+                <option value="">Usar modelo principal</option>
+                ${state.availableModels.map((m) => `
+                  <option value="${escapeHtml(m.name)}" ${draft.agentRouterModel === m.name ? "selected" : ""}>${escapeHtml(m.name)}</option>
+                `).join("")}
+              </select>
+            </label>
+            <label>
+              <span class="muted">Modelo tutor (razonamiento) — recomendado: gemma3:4b</span>
+              <select data-settings-field="agentTutorModel">
+                <option value="">Usar modelo principal</option>
+                ${state.availableModels.map((m) => `
+                  <option value="${escapeHtml(m.name)}" ${draft.agentTutorModel === m.name ? "selected" : ""}>${escapeHtml(m.name)}</option>
+                `).join("")}
+              </select>
+            </label>
+            <label>
+              <span class="muted">Modelo de funcion (verificacion) — recomendado: functiongemma</span>
+              <select data-settings-field="agentFunctionModel">
+                <option value="">Usar modelo principal</option>
+                ${state.availableModels.map((m) => `
+                  <option value="${escapeHtml(m.name)}" ${draft.agentFunctionModel === m.name ? "selected" : ""}>${escapeHtml(m.name)}</option>
+                `).join("")}
+              </select>
+            </label>
+          </div>
           <div class="row">
             <button class="btn primary" data-action="save-settings">Guardar</button>
           </div>
@@ -2125,6 +2357,42 @@ async function markTutorSessionStatus(sessionId, status) {
   await saveProfileState();
 }
 
+async function logInteraction({ sessionId, stepId, question, answer, actionTaken, feedback, decisions = [] }) {
+  const entry = {
+    id: createLocalId("interaction"),
+    ts: new Date().toISOString(),
+    sessionId: sessionId || "",
+    stepId: stepId || "",
+    question: question || "",
+    answer: answer || "",
+    actionTaken: actionTaken || "",
+    feedback: feedback || null,
+    decisions: decisions || []
+  };
+  state.profile = migrateProfile({
+    ...state.profile,
+    interactionLog: [...(state.profile.interactionLog || []), entry]
+  });
+  await saveProfileState();
+  return entry.id;
+}
+
+async function setInteractionFeedback(interactionId, thumbs) {
+  const log = [...(state.profile.interactionLog || [])];
+  const idx = log.findIndex((e) => e.id === interactionId);
+  if (idx >= 0) {
+    log[idx] = { ...log[idx], feedback: thumbs };
+    state.profile = migrateProfile({ ...state.profile, interactionLog: log });
+    await saveProfileState();
+  }
+}
+
+function getInteractionsForAction(actionCode) {
+  return (state.profile.interactionLog || []).filter((entry) =>
+    (entry.decisions || []).includes(actionCode)
+  );
+}
+
 function normalizeContextFlashcards(raw, fallbackTopic, relationText) {
   const needsMoreContext = Boolean(raw?.needsMoreContext);
   const followUp = String(raw?.followUp || "").trim();
@@ -2279,7 +2547,90 @@ async function generateExerciseTrace(question, options = {}) {
   return Array.isArray(safeJsonParse(answer, [])) ? safeJsonParse(answer, []) : [];
 }
 
+async function handleStudyQuestionAgentMode(question, options = {}) {
+  const models = resolveAgentModels(state.settings);
+  const askFn = makeAgentAskFn();
+  const sessionId = createLocalId("session");
+
+  const pipelineResult = await runTutorPipeline(question, sessionId, {
+    profile: state.profile,
+    askFn,
+    models
+  });
+
+  if (pipelineResult.isOffTopic) {
+    const sid = await createTutorSessionRecord({
+      kind: "non_math",
+      topic: question,
+      conceptTopic: "",
+      source: "practice-chat-agent",
+      status: "completed"
+    });
+    await appendTutorSessionEvent(sid, {
+      type: "scope-gate",
+      decisions: ["h"],
+      detail: `Router: ${pipelineResult.routerResult?.route || "off_topic"}`
+    });
+    state.practiceSession = preparePracticeSession({
+      kind: "non_math",
+      classification: { kind: "non_math", topic: question, conceptTopic: "", relatedTopics: [], reason: "Fuera del dominio de matematicas infantiles." },
+      reusedConcept: false,
+      sessionId: sid
+    });
+    state.exerciseOverlay = { open: false, index: 0 };
+    openFlashcards({
+      source: "practice-scope-gate",
+      title: "Pregunta fuera de alcance",
+      subtitle: "Este espacio solo responde matematicas infantiles.",
+      cards: [{ title: "No corresponde a este tutor", body: "Tu pregunta no corresponde a matematicas infantiles. Prueba con operaciones, fracciones, geometria basica o problemas escolares." }],
+      sessionId: sid
+    });
+    return;
+  }
+
+  const { tutorState, solution, plannerResult } = pipelineResult;
+  const classification = {
+    kind: "exercise",
+    topic: plannerResult.learning_objective,
+    conceptTopic: plannerResult.learning_objective,
+    relatedTopics: [],
+    reason: "Modo agente CLASS-A activado."
+  };
+
+  const sid = await createTutorSessionRecord({
+    kind: "exercise",
+    topic: classification.topic,
+    conceptTopic: classification.conceptTopic,
+    source: "practice-chat-agent",
+    visibleSteps: solution.steps.map((step) => step.title),
+    status: "active"
+  });
+  await appendTutorSessionEvent(sid, {
+    type: "classification",
+    decisions: ["g1", "f1"],
+    detail: `Agente planificador: ${plannerResult.learning_objective}`
+  });
+
+  state.practiceSession = {
+    ...preparePracticeSession({ kind: "exercise", classification, solution, reusedConcept: false, sessionId: sid }),
+    tutorState,
+    agentMode: true
+  };
+  state.exerciseOverlay = { open: true, index: 0 };
+
+  await persistConceptStudy({
+    topic: classification.topic,
+    relatedTopics: [],
+    status: "studying",
+    source: "exercise-bridge"
+  });
+}
+
 async function handleStudyQuestion(question, options = {}) {
+  if (state.settings.agentMode) {
+    return handleStudyQuestionAgentMode(question, options);
+  }
+
   const scopeText = await askWithOllama([
     { role: "system", content: kidMathGatePrompt },
     { role: "user", content: buildKidMathGateUserPrompt(question) }
@@ -2666,6 +3017,13 @@ function handleInput(event) {
     }, state.availableModels);
   }
 
+  if (target.dataset.settingsCheckbox) {
+    state.settingsDraft = normalizeSettings({
+      ...(state.settingsDraft || state.settings),
+      [target.dataset.settingsCheckbox]: target.checked
+    }, state.availableModels);
+  }
+
   if (target.dataset.stepInputId && state.practiceSession) {
     state.practiceSession = {
       ...state.practiceSession,
@@ -2863,6 +3221,78 @@ async function handleClick(event) {
     await window.bridge.saveProfile(state.profile);
   }
 
+  if (action === "delete-profile") {
+    state.deleteProfileConfirm = true;
+  }
+
+  if (action === "cancel-delete-profile") {
+    state.deleteProfileConfirm = false;
+  }
+
+  if (action === "confirm-delete-profile") {
+    state.profile = await window.bridge.resetProfile();
+    state.deleteProfileConfirm = false;
+    state.page = "profile";
+  }
+
+  if (action === "toggle-tracking-section") {
+    const section = button.dataset.section;
+    if (section) {
+      state.trackingSections = {
+        ...state.trackingSections,
+        [section]: !state.trackingSections[section]
+      };
+    }
+  }
+
+  if (action === "open-student-analysis") {
+    if (!state.settings.currentModel || state.studentAnalysis.busy) return;
+    state.studentAnalysis = { open: true, busy: true, text: "" };
+    render();
+    try {
+      const log = (state.profile.interactionLog || []).slice(-40);
+      const sessions = (state.profile.tutorSessions || []).slice(-10);
+      const metrics = tutorMetrics();
+      const systemPrompt = `Eres un analista pedagogico experto. Analiza las interacciones de un estudiante de matematicas y genera un resumen en español con los siguientes puntos:
+1. Patrones de comportamiento observados
+2. Conceptos en los que el estudiante demuestra mas dificultad
+3. Conceptos en los que el estudiante muestra mayor fortaleza
+4. Nivel de persistencia (cuantos intentos hace, cuantas pistas pide)
+5. Calidad del feedback recibido del sistema (segun los thumbs up/down)
+6. Recomendaciones concretas para mejorar el aprendizaje del estudiante
+
+Sé conciso pero preciso. Usa bullet points. NO uses markdown complejo, solo bullets simples.`;
+      const userPrompt = [
+        `Estudiante: ${state.profile.name || "Sin nombre"} (${state.profile.grade || "sin grado"})`,
+        `Sesiones totales: ${metrics.sessions}`,
+        `Intentos correctos: ${metrics.correctAttempts}, incorrectos: ${metrics.incorrectAttempts}, ambiguos: ${metrics.ambiguousAttempts}`,
+        `Pasos completados: ${metrics.stepsCompleted}`,
+        `Pistas pedidas: ${metrics.hintsShown}`,
+        `Feedback positivo: ${metrics.feedbackUp}, negativo: ${metrics.feedbackDown}`,
+        `Alertas de dificultad: ${metrics.struggleSignals}`,
+        ``,
+        `Ultimas ${log.length} interacciones registradas:`,
+        ...log.map((e, i) => `  ${i + 1}. P: "${e.question}" | R: "${e.answer}" | Accion: ${e.actionTaken} | Feedback: ${e.feedback || "sin valorar"}`),
+        ``,
+        `Sesiones recientes (${sessions.length}):`,
+        ...sessions.map((s) => `  - [${s.kind}] ${s.topic} (${(s.events || []).length} eventos, estado: ${s.status})`)
+      ].join("\n");
+
+      const text = await askWithOllama([
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ], { model: state.settings.agentTutorModel || state.settings.currentModel, maxTokens: 600, temperature: 0.3 });
+
+      state.studentAnalysis = { open: true, busy: false, text: String(text || "No se pudo generar el analisis.") };
+    } catch (err) {
+      state.studentAnalysis = { open: true, busy: false, text: `Error al generar el analisis: ${err.message}` };
+    }
+  }
+
+  if (action === "close-student-analysis") {
+    state.studentAnalysis = { open: false, busy: false, text: "" };
+  }
+
   if (action === "edit-profile") {
     state.profileDraft = migrateProfile(state.profile);
     state.profile = { ...state.profile, onboardingCompleted: false };
@@ -3013,18 +3443,23 @@ async function handleClick(event) {
 
   if (action === "toggle-step-hint" && state.practiceSession) {
     const stepId = button.dataset.stepId;
-    const isOpening = !state.practiceSession.openHints?.[stepId];
-    const openHints = {
-      ...(state.practiceSession.openHints || {}),
-      [stepId]: isOpening
-    };
-    state.practiceSession = { ...state.practiceSession, openHints };
-    if (isOpening && state.practiceSession.sessionId) {
+    const hintLevels = { ...(state.practiceSession.hintLevels || {}) };
+    const currentLevel = hintLevels[stepId] || 0;
+    const step = state.practiceSession.solution?.steps?.find((s) => s.id === stepId);
+    const maxHints = step?.hintLadder?.length || 3;
+    if (currentLevel < maxHints) {
+      hintLevels[stepId] = currentLevel + 1;
+    } else {
+      hintLevels[stepId] = 0;
+    }
+    state.practiceSession = { ...state.practiceSession, hintLevels };
+    if (hintLevels[stepId] > 0 && state.practiceSession.sessionId) {
       await appendTutorSessionEvent(state.practiceSession.sessionId, {
         type: "hint-open",
         stepId,
+        hintLevel: hintLevels[stepId],
         decisions: ["a3"],
-        detail: "El estudiante abrio una pista."
+        detail: `El estudiante pidio pista nivel ${hintLevels[stepId]}.`
       });
     }
   }
@@ -3033,8 +3468,29 @@ async function handleClick(event) {
     const step = state.practiceSession.solution.steps.find((item) => item.id === button.dataset.stepId);
     if (step) {
       const value = state.practiceSession.stepInputs?.[step.id] || "";
-      const evaluation = evaluateStepAnswer(step, value);
-      const eventMeta = nextTutorEvent(evaluation.result, value);
+      let eventMeta;
+
+      if (state.practiceSession.agentMode && state.practiceSession.tutorState) {
+        const retryCount = state.practiceSession.stepFailureCounts?.[step.id] || 0;
+        const models = resolveAgentModels(state.settings);
+        const askFn = makeAgentAskFn();
+        openLoadingPanel({ title: "Tutor evaluando...", cancelable: false });
+        let turnResult;
+        try {
+          turnResult = await runTurnPipeline(
+            state.practiceSession.tutorState,
+            { step, answer: value, retryCount },
+            { profile: state.profile, askFn, models }
+          );
+        } finally {
+          closeLoadingPanel();
+        }
+        state.practiceSession = { ...state.practiceSession, tutorState: turnResult.updatedTutorState };
+        eventMeta = { result: turnResult.result, decisions: turnResult.decisions, message: turnResult.message };
+      } else {
+        const evaluation = evaluateStepAnswer(step, value);
+        eventMeta = nextTutorEvent(evaluation.result, value);
+      }
       const nextAttempts = {
         ...(state.practiceSession.stepAttempts || {}),
         [step.id]: Number(state.practiceSession.stepAttempts?.[step.id] || 0) + 1
@@ -3076,7 +3532,19 @@ async function handleClick(event) {
         });
       }
 
-      if (eventMeta.result === "incorrect" && nextFailureCounts[step.id] >= 3 && !flaggedSteps[step.id]) {
+      const interactionId = await logInteraction({
+        sessionId: state.practiceSession.sessionId,
+        stepId: step.id,
+        question: step.prompt || step.title,
+        answer: value,
+        actionTaken: eventMeta.result === "correct" ? "confirm_and_advance" : eventMeta.result === "incorrect" ? "corrective_feedback" : "clarify_request",
+        feedback: null,
+        decisions: eventMeta.decisions
+      });
+      stepResults[step.id] = { ...stepResults[step.id], interactionId };
+      state.practiceSession = { ...state.practiceSession, stepResults };
+
+      if (eventMeta.result === "incorrect" && nextFailureCounts[step.id] >= 2 && !flaggedSteps[step.id]) {
         flaggedSteps[step.id] = true;
         state.practiceSession = {
           ...state.practiceSession,
@@ -3117,6 +3585,35 @@ async function handleClick(event) {
         return;
       }
     }
+  }
+
+  if (action === "feedback-thumb" && button.dataset.interactionId) {
+    const thumb = button.dataset.thumb;
+    const interactionId = button.dataset.interactionId;
+    const stepId = button.dataset.stepId;
+    await setInteractionFeedback(interactionId, thumb);
+    if (stepId && state.practiceSession?.stepResults?.[stepId]) {
+      const stepResults = { ...state.practiceSession.stepResults };
+      stepResults[stepId] = { ...stepResults[stepId], feedback: thumb };
+      state.practiceSession = { ...state.practiceSession, stepResults };
+    }
+    render();
+    return;
+  }
+
+  if (action === "tracking-action-detail") {
+    state.trackingDetail = {
+      open: true,
+      actionCode: button.dataset.actionCode || null
+    };
+    render();
+    return;
+  }
+
+  if (action === "close-tracking-detail") {
+    state.trackingDetail = { open: false, actionCode: null };
+    render();
+    return;
   }
 
   if (action === "open-session-flashcards" && state.practiceSession?.deck) {
@@ -3221,18 +3718,23 @@ async function refreshOllamaModels(baseUrl) {
 }
 
 async function askWithOllama(messages, options = {}) {
-  if (!state.settings.currentModel) {
+  const model = options.model || state.settings.currentModel;
+  if (!model) {
     throw new Error("Activa un modelo local desde Configuracion LLM.");
   }
 
   return window.bridge.chat({
     baseUrl: state.settings.ollamaBaseUrl,
-    model: state.settings.currentModel,
+    model,
     messages,
     requestId: options.requestId || "",
     maxTokens: Number.isFinite(Number(options.maxTokens)) ? Number(options.maxTokens) : null,
     temperature: Number.isFinite(Number(options.temperature)) ? Number(options.temperature) : null
   });
+}
+
+function makeAgentAskFn() {
+  return async (messages, opts = {}) => askWithOllama(messages, opts);
 }
 
 function wireLessonFrame() {

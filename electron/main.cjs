@@ -21,7 +21,8 @@ const DEFAULT_PROFILE = {
   conceptProgress: [],
   tutorSessions: [],
   struggleSignals: [],
-  lessonFlashcards: []
+  lessonFlashcards: [],
+  interactionLog: []
 };
 
 const DEFAULT_SETTINGS = {

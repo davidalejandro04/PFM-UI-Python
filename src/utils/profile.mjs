@@ -13,7 +13,8 @@ export const defaultProfile = {
   conceptProgress: [],
   tutorSessions: [],
   struggleSignals: [],
-  lessonFlashcards: []
+  lessonFlashcards: [],
+  interactionLog: []
 };
 
 const XP_PER_LEVEL = 40;
@@ -223,7 +224,8 @@ export function migrateProfile(input = {}) {
     conceptProgress,
     tutorSessions,
     struggleSignals,
-    lessonFlashcards
+    lessonFlashcards,
+    interactionLog: Array.isArray(input.interactionLog) ? input.interactionLog : []
   };
 }
 
