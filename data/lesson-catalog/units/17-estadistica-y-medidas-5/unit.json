@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-17-estadistica-y-medidas-5",
+  "slug": "17-estadistica-y-medidas-5",
+  "title": "Estadística y medidas — 5.º",
+  "metadata": {
+    "contentType": "statistics",
+    "coursework": "mathematics-primary",
+    "lineIndex": 17,
+    "unitNumber": 17,
+    "gradeBands": ["5"],
+    "tags": ["graficos", "histograma", "grafico-circular", "masa", "capacidad"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-estadistica-5-01-graficos-y-tablas",
+      "order": 1,
+      "file": "./lessons/01-graficos-y-tablas.json"
+    },
+    {
+      "id": "lesson-estadistica-5-02-histograma-y-grafico-circular",
+      "order": 2,
+      "file": "./lessons/02-histograma-y-grafico-circular.json"
+    },
+    {
+      "id": "lesson-estadistica-5-03-unidades-de-masa-y-capacidad",
+      "order": 3,
+      "file": "./lessons/03-unidades-de-masa-y-capacidad.json"
+    }
+  ]
+}

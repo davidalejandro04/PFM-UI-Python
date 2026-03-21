@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "lesson-multiplicacion-3-01-concepto-de-multiplicacion",
+  "slug": "01-concepto-de-multiplicacion",
+  "unitId": "unit-07-multiplicacion-3",
+  "order": 1,
+  "title": "Concepto de multiplicación (3.º)",
+  "description": "Comprender la multiplicación como suma repetida y representarla con grupos y arreglos.",
+  "metadata": {
+    "contentType": "lesson",
+    "coursework": "mathematics-primary",
+    "lineIndex": 3,
+    "lessonIndex": 1,
+    "gradeBands": [
+      "3"
+    ],
+    "sourceFormat": "legacy-lessons-json"
+  },
+  "formulas": [],
+  "assets": [],
+  "stages": [
+    {
+      "id": "stage-01",
+      "order": 1,
+      "title": "¿Qué es multiplicar?",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>¿Qué es multiplicar?</title>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .example h4, .task h4 { margin-top: 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .step { margin:.3rem 0; }\n    code.k { background:#f7f7f7; padding:.15rem .35rem; border-radius:4px; }\n  </style>\n</head>\n<body>\n\n<h1>¿Qué es multiplicar?</h1>\n<div><span class=\"badge\">Eje</span> Operaciones numéricas — Multiplicación</div>\n<div class=\"note\"><strong>Guía 4: Conozcamos una nueva operación.</strong> Así se presenta la multiplicación en tu libro de texto. Vamos a descubrirla a través de situaciones de la vida real.</div>\n<p><strong>Multiplicar</strong> es una forma rápida de sumar el mismo número varias veces.</p>\n\n<h2>Situaciones de la vida real</h2>\n<div class=\"example\">\n  <h4>En la tienda</h4>\n  <p>En una tienda hay <strong>4 estantes</strong> y en cada estante hay <strong>6 productos</strong>. ¿Cuántos productos hay en total?</p>\n  <p class=\"step\">Con suma repetida: <code class=\"k\">6 + 6 + 6 + 6 = 24</code></p>\n  <p class=\"step\">Con multiplicación: <code class=\"k\">4 × 6 = 24 productos</code></p>\n</div>\n<div class=\"example\">\n  <h4>En la finca</h4>\n  <p>Un granjero tiene <strong>5 corrales</strong> con <strong>3 gallinas</strong> en cada uno. ¿Cuántas gallinas tiene?</p>\n  <p class=\"step\">Con suma repetida: <code class=\"k\">3 + 3 + 3 + 3 + 3 = 15</code></p>\n  <p class=\"step\">Con multiplicación: <code class=\"k\">5 × 3 = 15 gallinas</code></p>\n</div>\n\n<h2>Representación con grupos</h2>\n<div class=\"example\">\n  <h4>Suma repetida</h4>\n  <p>Si tienes <strong>3 grupos</strong> de <strong>4 estrellas</strong> cada uno:</p>\n  <p style=\"font-size:1.3rem; text-align:center;\">&#9733;&#9733;&#9733;&#9733; &nbsp; &#9733;&#9733;&#9733;&#9733; &nbsp; &#9733;&#9733;&#9733;&#9733;</p>\n  <p>Con suma repetida: <code class=\"k\">4 + 4 + 4 = 12</code></p>\n  <p>Con multiplicación: <code class=\"k\">3 × 4 = 12</code></p>\n</div>\n\n<div class=\"example\">\n  <h4>Arreglo rectangular</h4>\n  <p>También podemos ver la multiplicación como filas y columnas:</p>\n  <table style=\"border-collapse:collapse; margin:0.5rem auto; font-size:1.2rem;\">\n    <tr><td style=\"padding:4px 8px;\">&#9679;</td><td style=\"padding:4px 8px;\">&#9679;</td><td style=\"padding:4px 8px;\">&#9679;</td><td style=\"padding:4px 8px;\">&#9679;</td></tr>\n    <tr><td style=\"padding:4px 8px;\">&#9679;</td><td style=\"padding:4px 8px;\">&#9679;</td><td style=\"padding:4px 8px;\">&#9679;</td><td style=\"padding:4px 8px;\">&#9679;</td></tr>\n    <tr><td style=\"padding:4px 8px;\">&#9679;</td><td style=\"padding:4px 8px;\">&#9679;</td><td style=\"padding:4px 8px;\">&#9679;</td><td style=\"padding:4px 8px;\">&#9679;</td></tr>\n  </table>\n  <p style=\"text-align:center;\">3 filas × 4 columnas = <strong>12</strong></p>\n</div>\n\n<div class=\"note\">Recuerda: multiplicar es sumar grupos iguales. El signo × se lee \"por\".</div>\n\n</body>\n</html>",
+      "formulas": [],
+      "assets": []
+    },
+    {
+      "id": "stage-02",
+      "order": 2,
+      "title": "Ejemplos con grupos",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Ejemplos con grupos</title>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .example h4, .task h4 { margin-top: 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .step { margin:.3rem 0; }\n    code.k { background:#f7f7f7; padding:.15rem .35rem; border-radius:4px; }\n  </style>\n</head>\n<body>\n\n<h2>Ejemplos con grupos</h2>\n\n<div class=\"example\">\n  <h4>Ejemplo 1: Bolsas de manzanas</h4>\n  <p>María tiene <strong>3 bolsas</strong> y cada bolsa tiene <strong>5 manzanas</strong>.</p>\n  <p style=\"font-size:1.2rem; text-align:center;\">&#127822;&#127822;&#127822;&#127822;&#127822; &nbsp; &#127822;&#127822;&#127822;&#127822;&#127822; &nbsp; &#127822;&#127822;&#127822;&#127822;&#127822;</p>\n  <div class=\"step\">Paso 1: Identificar los grupos → <strong>3 bolsas</strong></div>\n  <div class=\"step\">Paso 2: Contar cuántos hay en cada grupo → <strong>5 manzanas</strong></div>\n  <div class=\"step\">Paso 3: Multiplicar → <code class=\"k\">3 × 5 = 15 manzanas</code></div>\n  <p>Comprobación con suma: <code class=\"k\">5 + 5 + 5 = 15</code></p>\n</div>\n\n<div class=\"example\">\n  <h4>Ejemplo 2: Patas de animales</h4>\n  <p>Hay <strong>4 perros</strong> en el parque. Cada perro tiene <strong>4 patas</strong>.</p>\n  <p>¿Cuántas patas hay en total?</p>\n  <div class=\"step\"><code class=\"k\">4 × 4 = 16 patas</code></div>\n  <p>Comprobación: <code class=\"k\">4 + 4 + 4 + 4 = 16</code></p>\n</div>\n\n<div class=\"example\">\n  <h4>Ejemplo 3: Ruedas de bicicletas</h4>\n  <p>En el estacionamiento hay <strong>5 bicicletas</strong>. Cada bicicleta tiene <strong>2 ruedas</strong>.</p>\n  <p>¿Cuántas ruedas hay?</p>\n  <div class=\"step\"><code class=\"k\">5 × 2 = 10 ruedas</code></div>\n  <p>Comprobación: <code class=\"k\">2 + 2 + 2 + 2 + 2 = 10</code></p>\n</div>\n\n<div class=\"note\">Fíjate: siempre buscamos <strong>cuántos grupos</strong> hay y <strong>cuántos elementos</strong> tiene cada grupo.</div>\n\n</body>\n</html>",
+      "formulas": [],
+      "assets": []
+    },
+    {
+      "id": "stage-03",
+      "order": 3,
+      "title": "Práctica guiada",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Práctica guiada</title>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .example h4, .task h4 { margin-top: 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .step { margin:.3rem 0; }\n    code.k { background:#f7f7f7; padding:.15rem .35rem; border-radius:4px; }\n  </style>\n</head>\n<body>\n\n<h2>Práctica guiada</h2>\n<p>Escribe cada multiplicación como suma repetida y encuentra el resultado.</p>\n\n<div class=\"task\">\n  <h4>Ejercicio 1</h4>\n  <p><code class=\"k\">2 × 5 = ?</code></p>\n  <p>Escríbelo como suma: <code class=\"k\">5 + 5 = ?</code></p>\n</div>\n\n<div class=\"task\">\n  <h4>Ejercicio 2</h4>\n  <p><code class=\"k\">4 × 3 = ?</code></p>\n  <p>Escríbelo como suma: <code class=\"k\">3 + 3 + 3 + 3 = ?</code></p>\n</div>\n\n<div class=\"task\">\n  <h4>Ejercicio 3</h4>\n  <p>Hay <strong>3 cajas</strong> con <strong>6 lápices</strong> cada una. ¿Cuántos lápices hay en total?</p>\n  <p>Multiplicación: <code class=\"k\">3 × 6 = ?</code></p>\n</div>\n\n<div class=\"task\">\n  <h4>Ejercicio 4</h4>\n  <p><code class=\"k\">5 × 4 = ?</code></p>\n  <p>Dibuja 5 grupos de 4 círculos y cuenta el total.</p>\n</div>\n\n<div class=\"task\">\n  <h4>Ejercicio 5</h4>\n  <p>Un equipo de futbol tiene <strong>5 jugadores</strong>. Si hay <strong>2 equipos</strong>, ¿cuántos jugadores hay en total?</p>\n  <p>Multiplicación: <code class=\"k\">2 × 5 = ?</code></p>\n</div>\n\n<div class=\"note\">Consejo: si te atoras, dibuja los grupos y cuenta uno por uno. Luego comprueba con la multiplicación.</div>\n\n</body>\n</html>",
+      "formulas": [],
+      "assets": []
+    }
+  ]
+}

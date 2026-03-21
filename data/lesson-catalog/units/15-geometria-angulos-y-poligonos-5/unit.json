@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-15-geometria-angulos-y-poligonos-5",
+  "slug": "15-geometria-angulos-y-poligonos-5",
+  "title": "Geometría: ángulos y polígonos — 5.º",
+  "metadata": {
+    "contentType": "geometry",
+    "coursework": "mathematics-primary",
+    "lineIndex": 15,
+    "unitNumber": 15,
+    "gradeBands": ["5"],
+    "tags": ["angulos", "triangulos", "cuadrilateros", "circunferencia"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-geometria-5-01-angulos",
+      "order": 1,
+      "file": "./lessons/01-angulos.json"
+    },
+    {
+      "id": "lesson-geometria-5-02-triangulos-y-cuadrilateros",
+      "order": 2,
+      "file": "./lessons/02-triangulos-y-cuadrilateros.json"
+    },
+    {
+      "id": "lesson-geometria-5-03-circunferencia-y-simetria",
+      "order": 3,
+      "file": "./lessons/03-circunferencia-y-simetria.json"
+    }
+  ]
+}

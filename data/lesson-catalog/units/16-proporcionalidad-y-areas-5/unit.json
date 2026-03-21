@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-16-proporcionalidad-y-areas-5",
+  "slug": "16-proporcionalidad-y-areas-5",
+  "title": "Proporcionalidad y áreas — 5.º",
+  "metadata": {
+    "contentType": "measurement",
+    "coursework": "mathematics-primary",
+    "lineIndex": 16,
+    "unitNumber": 16,
+    "gradeBands": ["5"],
+    "tags": ["proporcionalidad", "area", "perimetro", "figuras-compuestas"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-prop-areas-5-01-proporcionalidad-directa",
+      "order": 1,
+      "file": "./lessons/01-proporcionalidad-directa.json"
+    },
+    {
+      "id": "lesson-prop-areas-5-02-area-de-figuras-planas",
+      "order": 2,
+      "file": "./lessons/02-area-de-figuras-planas.json"
+    },
+    {
+      "id": "lesson-prop-areas-5-03-perimetro-y-area-de-figuras-compuestas",
+      "order": 3,
+      "file": "./lessons/03-perimetro-y-area-de-figuras-compuestas.json"
+    }
+  ]
+}

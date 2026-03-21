@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-10-multiplicacion-y-division-5",
+  "slug": "10-multiplicacion-y-division-5",
+  "title": "Multiplicación y división — 5.º",
+  "metadata": {
+    "contentType": "number-operations",
+    "coursework": "mathematics-primary",
+    "lineIndex": 10,
+    "unitNumber": 10,
+    "gradeBands": ["5"],
+    "tags": ["multiplicacion", "division", "propiedades", "potenciacion"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-mult-div-5-01-metodos-de-multiplicacion",
+      "order": 1,
+      "file": "./lessons/01-metodos-de-multiplicacion.json"
+    },
+    {
+      "id": "lesson-mult-div-5-02-division-y-pruebas",
+      "order": 2,
+      "file": "./lessons/02-division-y-pruebas.json"
+    },
+    {
+      "id": "lesson-mult-div-5-03-potenciacion-y-operaciones-combinadas",
+      "order": 3,
+      "file": "./lessons/03-potenciacion-y-operaciones-combinadas.json"
+    }
+  ]
+}

@@ -221,7 +221,9 @@ function normalizeStage(stage = {}, index = 0) {
 }
 
 function normalizeLesson(unit, lesson = {}) {
-  ensure(lesson.unitId === unit.id, `La leccion ${lesson.id || lesson.title || "sin-id"} no pertenece a la unidad ${unit.id}.`);
+  if (lesson.unitId && lesson.unitId !== unit.id) {
+    ensure(false, `La leccion ${lesson.id || lesson.title || "sin-id"} no pertenece a la unidad ${unit.id}.`);
+  }
   ensure(Array.isArray(lesson.stages) && lesson.stages.length, `La leccion ${lesson.id || lesson.title || "sin-id"} no tiene etapas.`);
 
   const stageIds = new Set();
@@ -276,22 +278,60 @@ function normalizeUnit(unit = {}, lessons = []) {
   };
 }
 
+async function discoverUnitPaths(rootDir) {
+  const unitsDir = path.join(rootDir, "units");
+  let entries;
+  try {
+    entries = await fs.readdir(unitsDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const paths = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const unitPath = path.join(unitsDir, entry.name, "unit.json");
+    try {
+      await fs.access(unitPath);
+      paths.push(unitPath);
+    } catch {
+      // no unit.json in this folder, skip
+    }
+  }
+  return paths;
+}
+
 export async function loadLessonCatalogFromDirectory(rootDir) {
   const catalogPath = path.join(rootDir, "catalog.json");
   const catalog = await readJson(catalogPath);
   ensure(catalog.schemaVersion === LESSON_CATALOG_SCHEMA_VERSION, `Version de catalogo no soportada en ${catalogPath}.`);
-  ensure(Array.isArray(catalog.units) && catalog.units.length, `El catalogo ${catalogPath} no define unidades.`);
+
+  const unitPaths = await discoverUnitPaths(rootDir);
+  ensure(unitPaths.length > 0, `No se encontraron unidades en ${path.join(rootDir, "units")}.`);
 
   const seenUnitIds = new Set();
   const occupiedCourseworkSlots = new Map();
   const normalizedUnits = [];
 
-  for (const unitRef of catalog.units) {
-    const unitPath = path.resolve(rootDir, unitRef.file);
-    const unitData = await readJson(unitPath);
-    ensure(unitData.schemaVersion === LESSON_CATALOG_SCHEMA_VERSION, `Version de unidad no soportada en ${unitPath}.`);
-    ensure(unitData.id === unitRef.id, `El id de ${unitPath} no coincide con el catalogo.`);
-    ensure(!seenUnitIds.has(unitData.id), `La unidad ${unitData.id} esta repetida en el catalogo.`);
+  for (const unitPath of unitPaths) {
+    let unitData;
+    try {
+      unitData = await readJson(unitPath);
+    } catch (err) {
+      console.warn(`[catalog] Unidad omitida (JSON invalido): ${unitPath} — ${err.message}`);
+      continue;
+    }
+    if (unitData.schemaVersion !== LESSON_CATALOG_SCHEMA_VERSION) {
+      console.warn(`[catalog] Unidad omitida (version no soportada): ${unitPath}`);
+      continue;
+    }
+    if (!String(unitData.id || "").trim()) {
+      console.warn(`[catalog] Unidad omitida (sin id): ${unitPath}`);
+      continue;
+    }
+    if (seenUnitIds.has(unitData.id)) {
+      console.warn(`[catalog] Unidad omitida (id repetido): ${unitData.id}`);
+      continue;
+    }
     seenUnitIds.add(unitData.id);
 
     const lessonRefs = Array.isArray(unitData.lessons) ? unitData.lessons : [];
@@ -305,14 +345,37 @@ export async function loadLessonCatalogFromDirectory(rootDir) {
       seenLessonOrders.add(Number(lessonRef.order));
 
       const lessonPath = resolveRelativeJson(unitPath, lessonRef.file);
-      const lessonData = await readJson(lessonPath);
-      ensure(lessonData.schemaVersion === LESSON_CATALOG_SCHEMA_VERSION, `Version de leccion no soportada en ${lessonPath}.`);
-      ensure(lessonData.id === lessonRef.id, `El id de ${lessonPath} no coincide con la unidad ${unitData.id}.`);
-      ensure(!seenLessonIds.has(lessonData.id), `La unidad ${unitData.id} repite la leccion ${lessonData.id}.`);
+      let lessonData;
+      try {
+        lessonData = await readJson(lessonPath);
+      } catch (err) {
+        console.warn(`[catalog] Leccion omitida (JSON invalido): ${lessonPath} — ${err.message}`);
+        continue;
+      }
+      if (lessonData.schemaVersion !== LESSON_CATALOG_SCHEMA_VERSION) {
+        console.warn(`[catalog] Leccion omitida (version no soportada): ${lessonPath}`);
+        continue;
+      }
+      if (lessonData.id !== lessonRef.id) {
+        console.warn(`[catalog] Leccion omitida (id no coincide): ${lessonPath}`);
+        continue;
+      }
+      if (seenLessonIds.has(lessonData.id)) {
+        console.warn(`[catalog] Leccion omitida (id repetido): ${lessonData.id} en ${unitData.id}`);
+        continue;
+      }
       seenLessonIds.add(lessonData.id);
-      ensure(Number(lessonData.order) === Number(lessonRef.order), `La leccion ${lessonData.id} no coincide con el indice ${lessonRef.order} declarado en la unidad ${unitData.id}.`);
 
-      lessons.push(normalizeLesson(unitData, lessonData));
+      // unit.json is authoritative for order; patch it in if missing
+      const lessonWithOrder = (lessonData.order === undefined || lessonData.order === null)
+        ? { ...lessonData, order: lessonRef.order }
+        : lessonData;
+
+      try {
+        lessons.push(normalizeLesson(unitData, lessonWithOrder));
+      } catch (err) {
+        console.warn(`[catalog] Leccion omitida (error de normalizacion): ${lessonPath} — ${err.message}`);
+      }
     }
 
     lessons.sort((left, right) => left.order - right.order);
@@ -327,5 +390,6 @@ export async function loadLessonCatalogFromDirectory(rootDir) {
     normalizedUnits.push(normalizedUnit);
   }
 
+  normalizedUnits.sort((a, b) => a.metadata.lineIndex - b.metadata.lineIndex);
   return normalizedUnits;
 }

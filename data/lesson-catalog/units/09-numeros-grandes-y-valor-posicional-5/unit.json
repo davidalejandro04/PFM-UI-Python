@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-09-numeros-grandes-y-valor-posicional-5",
+  "slug": "09-numeros-grandes-y-valor-posicional-5",
+  "title": "Números grandes y valor posicional — 5.º",
+  "metadata": {
+    "contentType": "number-sense",
+    "coursework": "mathematics-primary",
+    "lineIndex": 9,
+    "unitNumber": 9,
+    "gradeBands": ["5"],
+    "tags": ["millones", "valor-posicional", "comparacion", "numeros-romanos"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-numeros-grandes-5-01-millones-y-valor-posicional",
+      "order": 1,
+      "file": "./lessons/01-millones-y-valor-posicional.json"
+    },
+    {
+      "id": "lesson-numeros-grandes-5-02-comparacion-y-orden",
+      "order": 2,
+      "file": "./lessons/02-comparacion-y-orden.json"
+    },
+    {
+      "id": "lesson-numeros-grandes-5-03-operaciones-combinadas",
+      "order": 3,
+      "file": "./lessons/03-operaciones-combinadas.json"
+    }
+  ]
+}

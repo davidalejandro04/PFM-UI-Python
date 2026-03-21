@@ -1,9 +1,9 @@
 export const defaultProfile = {
   name: "",
-  avatar: "tutor",
-  grade: "5.o",
+  avatar: "",
+  grade: "",
   dailyGoal: 20,
-  focusArea: "Resolucion de problemas",
+  focusArea: "",
   responseMode: "coach",
   onboardingCompleted: false,
   xp: 0,

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-07-multiplicacion-3",
+  "slug": "07-multiplicacion-3",
+  "title": "Multiplicación — 3.º",
+  "metadata": {
+    "contentType": "number-operations",
+    "coursework": "mathematics-primary",
+    "lineIndex": 3,
+    "unitNumber": 3,
+    "gradeBands": ["3"],
+    "tags": ["multiplicacion", "tablas", "relaciones-multiplicativas"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-multiplicacion-3-01-concepto-de-multiplicacion",
+      "order": 1,
+      "file": "./lessons/01-concepto-de-multiplicacion.json"
+    },
+    {
+      "id": "lesson-multiplicacion-3-02-tablas-de-multiplicar",
+      "order": 2,
+      "file": "./lessons/02-tablas-de-multiplicar.json"
+    },
+    {
+      "id": "lesson-multiplicacion-3-03-relaciones-multiplicativas",
+      "order": 3,
+      "file": "./lessons/03-relaciones-multiplicativas.json"
+    }
+  ]
+}

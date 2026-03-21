@@ -2,14 +2,18 @@
   "name": "tutormate-electron",
   "version": "1.0.0",
   "description": "Desktop math tutor rebuilt as an Electron app with Ollama local runtime.",
+  "license": "Apache-2.0",
   "main": "electron/main.cjs",
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "test": "node tests-node/app.test.mjs"
+    "test": "node tests-node/app.test.mjs",
+    "build": "electron-builder --config electron-builder.json"
   },
   "devDependencies": {
     "electron": "^35.0.0",
+    "electron-builder": "^26.8.1",
     "playwright": "^1.58.2"
-  }
+  },
+  "author": "TutorMate Team"
 }

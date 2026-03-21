@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-13-operaciones-con-fracciones-5",
+  "slug": "13-operaciones-con-fracciones-5",
+  "title": "Operaciones con fracciones — 5.º",
+  "metadata": {
+    "contentType": "fractions",
+    "coursework": "mathematics-primary",
+    "lineIndex": 13,
+    "unitNumber": 13,
+    "gradeBands": ["5"],
+    "tags": ["suma-fracciones", "resta-fracciones", "multiplicacion-fracciones"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-op-fracciones-5-01-suma-y-resta-igual-denominador",
+      "order": 1,
+      "file": "./lessons/01-suma-y-resta-igual-denominador.json"
+    },
+    {
+      "id": "lesson-op-fracciones-5-02-suma-y-resta-distinto-denominador",
+      "order": 2,
+      "file": "./lessons/02-suma-y-resta-distinto-denominador.json"
+    },
+    {
+      "id": "lesson-op-fracciones-5-03-multiplicacion-de-fracciones",
+      "order": 3,
+      "file": "./lessons/03-multiplicacion-de-fracciones.json"
+    }
+  ]
+}

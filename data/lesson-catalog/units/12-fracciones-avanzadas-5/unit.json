@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-12-fracciones-avanzadas-5",
+  "slug": "12-fracciones-avanzadas-5",
+  "title": "Fracciones avanzadas — 5.º",
+  "metadata": {
+    "contentType": "fractions",
+    "coursework": "mathematics-primary",
+    "lineIndex": 12,
+    "unitNumber": 12,
+    "gradeBands": ["5"],
+    "tags": ["fracciones", "fracciones-impropias", "numeros-mixtos", "equivalencia"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-fracciones-avanzadas-5-01-tipos-de-fracciones",
+      "order": 1,
+      "file": "./lessons/01-tipos-de-fracciones.json"
+    },
+    {
+      "id": "lesson-fracciones-avanzadas-5-02-fracciones-equivalentes",
+      "order": 2,
+      "file": "./lessons/02-fracciones-equivalentes.json"
+    },
+    {
+      "id": "lesson-fracciones-avanzadas-5-03-comparacion-y-orden-de-fracciones",
+      "order": 3,
+      "file": "./lessons/03-comparacion-y-orden-de-fracciones.json"
+    }
+  ]
+}

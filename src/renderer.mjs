@@ -76,14 +76,14 @@ const pageMeta = {
 };
 
 const DEFAULT_SETTINGS = {
-  currentModel: "",
+  currentModel: "gemma3:4b",
   ollamaBaseUrl: "http://127.0.0.1:11434",
   responseMode: "coach",
   theme: "light",
-  agentMode: false,
-  agentRouterModel: "",
-  agentTutorModel: "",
-  agentFunctionModel: ""
+  agentMode: true,
+  agentRouterModel: "gemma3:4b",
+  agentTutorModel: "gemma3:4b",
+  agentFunctionModel: "gemma3:4b"
 };
 
 const PRACTICE_KIND_LABELS = {
@@ -93,6 +93,8 @@ const PRACTICE_KIND_LABELS = {
   "context-help": "Ayuda textual",
   "visual-help": "Ayuda visual"
 };
+
+const PULLABLE_MODELS = ["gemma3:1b", "gemma3:4b"];
 
 const VISION_MODEL_PATTERNS = [
   "llava",
@@ -141,6 +143,8 @@ const state = {
   settings: { ...DEFAULT_SETTINGS },
   availableModels: [],
   ollama: { ok: false, message: "Sin conexion con Ollama." },
+  machineId: "",
+  dataPath: "",
   page: "lessons",
   selectedUnit: null,
   currentLesson: null,
@@ -529,10 +533,23 @@ async function bootstrap() {
   state.availableModels = payload.availableModels || [];
   state.ollama = payload.ollama || state.ollama;
   state.settings = normalizeSettings(payload.settings || {}, state.availableModels);
+  state.machineId = payload.machineId || "";
+  state.dataPath = payload.dataPath || "";
   state.profileDraft = migrateProfile(state.profile);
   state.practiceMode = state.settings.responseMode;
   state.selectedUnit = state.lessons[0]?.unit || null;
   state.page = state.profile.onboardingCompleted ? "lessons" : "profile";
+
+  const requiredModel = payload.requiredModel || "gemma3:1b";
+  const hasRequired = state.availableModels.some((m) => m.name === requiredModel);
+
+  if (state.ollama.ok && !hasRequired) {
+    await pullModel(requiredModel);
+  }
+
+  if (!state.settings.currentModel || !state.availableModels.some((m) => m.name === state.settings.currentModel)) {
+    state.settings.currentModel = requiredModel;
+  }
 
   try {
     await window.bridge.saveSettings(state.settings);
@@ -1932,6 +1949,25 @@ function renderOnboarding() {
   `;
 }
 
+function modelOptions(selected, { placeholder = "Selecciona un modelo" } = {}) {
+  const availableNames = new Set(state.availableModels.map((m) => m.name));
+  const seen = new Set();
+  let html = placeholder ? `<option value="">${escapeHtml(placeholder)}</option>` : "";
+
+  for (const model of state.availableModels) {
+    seen.add(model.name);
+    html += `<option value="${escapeHtml(model.name)}" ${selected === model.name ? "selected" : ""}>${escapeHtml(model.name)}</option>`;
+  }
+
+  for (const name of PULLABLE_MODELS) {
+    if (!seen.has(name)) {
+      html += `<option value="${escapeHtml(name)}" ${selected === name ? "selected" : ""}>${escapeHtml(name)} (descargar)</option>`;
+    }
+  }
+
+  return html;
+}
+
 function renderSettingsModal() {
   const draft = cloneSettings();
 
@@ -1958,10 +1994,7 @@ function renderSettingsModal() {
             <label>
               <span class="muted">Modelo de Ollama</span>
               <select data-settings-field="currentModel">
-                <option value="">Selecciona un modelo</option>
-                ${state.availableModels.map((model) => `
-                  <option value="${escapeHtml(model.name)}" ${draft.currentModel === model.name ? "selected" : ""}>${escapeHtml(model.name)}</option>
-                `).join("")}
+                ${modelOptions(draft.currentModel)}
               </select>
             </label>
             <p class="muted">${escapeHtml(state.ollama.message)}</p>
@@ -1989,33 +2022,32 @@ function renderSettingsModal() {
             <label>
               <span class="muted">Modelo enrutador (rapido) — recomendado: qwen3.5:0.8b</span>
               <select data-settings-field="agentRouterModel">
-                <option value="">Usar modelo principal</option>
-                ${state.availableModels.map((m) => `
-                  <option value="${escapeHtml(m.name)}" ${draft.agentRouterModel === m.name ? "selected" : ""}>${escapeHtml(m.name)}</option>
-                `).join("")}
+                ${modelOptions(draft.agentRouterModel, { placeholder: "Usar modelo principal" })}
               </select>
             </label>
             <label>
               <span class="muted">Modelo tutor (razonamiento) — recomendado: gemma3:4b</span>
               <select data-settings-field="agentTutorModel">
-                <option value="">Usar modelo principal</option>
-                ${state.availableModels.map((m) => `
-                  <option value="${escapeHtml(m.name)}" ${draft.agentTutorModel === m.name ? "selected" : ""}>${escapeHtml(m.name)}</option>
-                `).join("")}
+                ${modelOptions(draft.agentTutorModel, { placeholder: "Usar modelo principal" })}
               </select>
             </label>
             <label>
               <span class="muted">Modelo de funcion (verificacion) — recomendado: functiongemma</span>
               <select data-settings-field="agentFunctionModel">
-                <option value="">Usar modelo principal</option>
-                ${state.availableModels.map((m) => `
-                  <option value="${escapeHtml(m.name)}" ${draft.agentFunctionModel === m.name ? "selected" : ""}>${escapeHtml(m.name)}</option>
-                `).join("")}
+                ${modelOptions(draft.agentFunctionModel, { placeholder: "Usar modelo principal" })}
               </select>
             </label>
           </div>
           <div class="row">
             <button class="btn primary" data-action="save-settings">Guardar</button>
+          </div>
+          <div class="card stack" style="border-color:var(--danger,#c00);">
+            <div>
+              <strong>Datos de la aplicacion</strong>
+              <p class="muted">Ubicacion: ${escapeHtml(state.dataPath || "")}</p>
+              <p class="muted">ID de maquina: ${escapeHtml(state.machineId || "")}</p>
+            </div>
+            <button class="btn danger" data-action="wipe-data">Borrar todos los datos</button>
           </div>
         </div>
       </div>
@@ -2046,7 +2078,7 @@ function renderLoadingPanel() {
         <div class="stack">
           <span class="tag">Tutor local</span>
           <h3 style="margin:0;">${escapeHtml(state.loadingPanel.title)}</h3>
-          <p class="muted">${escapeHtml(state.loadingPanel.detail)}</p>
+          <p class="muted" id="pull-progress-detail">${escapeHtml(state.loadingPanel.detail)}</p>
         </div>
       </div>
     </div>
@@ -2991,11 +3023,15 @@ async function runImageExplanation() {
     if (error?.name === "AbortError" || isRequestCancelled(requestId)) {
       return;
     }
+    const msg = String(error?.message || "");
+    const isModelError = /500|no.*support|not.*support|multimodal|imagen|image/i.test(msg);
     openFlashcards({
       source: "visual-help",
       title: "No pude analizar el recorte",
-      subtitle: "Intenta hacer un recorte un poco mas grande o mas claro.",
-      cards: fallbackExplanationCards(`[Error] ${error.message}`, "Recorte visual").map((card) => ({ title: card.title, body: card.body }))
+      subtitle: isModelError
+        ? "El modelo activo no soporta imagenes. Activa un modelo con vision desde Configuracion LLM."
+        : "Intenta hacer un recorte un poco mas grande o mas claro.",
+      cards: fallbackExplanationCards(`[Error] ${msg}`, "Recorte visual").map((card) => ({ title: card.title, body: card.body }))
     });
   } finally {
     finishRequest(requestId);
@@ -3375,15 +3411,36 @@ Sé conciso pero preciso. Usa bullet points. NO uses markdown complejo, solo bul
     return;
   }
 
+  if (action === "wipe-data") {
+    const wiped = await window.bridge.wipeData();
+    if (wiped) {
+      window.location.reload();
+    }
+    return;
+  }
+
   if (action === "refresh-models" && state.settingsDraft) {
     await refreshOllamaModels(state.settingsDraft.ollamaBaseUrl);
   }
 
   if (action === "save-settings" && state.settingsDraft) {
     const nextSettings = normalizeSettings(state.settingsDraft, state.availableModels);
+    const availableNames = new Set(state.availableModels.map((m) => m.name));
+    const modelFields = ["currentModel", "agentRouterModel", "agentTutorModel", "agentFunctionModel"];
+    const missingModels = [...new Set(
+      modelFields.map((f) => nextSettings[f]).filter((name) => name && !availableNames.has(name))
+    )];
+
+    state.settingsOpen = false;
+    state.settingsDraft = null;
+
+    for (const modelName of missingModels) {
+      await pullModel(modelName);
+    }
+
     const modelChanged = nextSettings.currentModel !== state.settings.currentModel;
     const urlChanged = nextSettings.ollamaBaseUrl !== state.settings.ollamaBaseUrl;
-    const shouldShowLoading = modelChanged || urlChanged;
+    const shouldShowLoading = (modelChanged || urlChanged) && missingModels.length === 0;
 
     if (shouldShowLoading) {
       openLoadingPanel({
@@ -3395,8 +3452,6 @@ Sé conciso pero preciso. Usa bullet points. NO uses markdown complejo, solo bul
     state.settings = nextSettings;
     state.practiceMode = state.settings.responseMode;
     await window.bridge.saveSettings(state.settings);
-    state.settingsOpen = false;
-    state.settingsDraft = null;
 
     if (shouldShowLoading) {
       await refreshOllamaModels(state.settings.ollamaBaseUrl);
@@ -3461,6 +3516,53 @@ Sé conciso pero preciso. Usa bullet points. NO uses markdown complejo, solo bul
         decisions: ["a3"],
         detail: `El estudiante pidio pista nivel ${hintLevels[stepId]}.`
       });
+    }
+
+    // Auto-unlock: when the student reaches the last hint, reveal the answer and mark correct
+    if (hintLevels[stepId] === maxHints && step && !state.practiceSession.stepResults?.[stepId]?.correct) {
+      const correctAnswer = (step.acceptedAnswers && step.acceptedAnswers[0]) || "";
+      const stepInputs = { ...(state.practiceSession.stepInputs || {}), [stepId]: correctAnswer };
+      const nextAttempts = {
+        ...(state.practiceSession.stepAttempts || {}),
+        [stepId]: Number(state.practiceSession.stepAttempts?.[stepId] || 0) + 1
+      };
+      const stepResults = {
+        ...(state.practiceSession.stepResults || {}),
+        [stepId]: {
+          correct: true,
+          result: "correct",
+          attempts: nextAttempts[stepId],
+          failures: state.practiceSession.stepFailureCounts?.[stepId] || 0,
+          message: "Respuesta desbloqueada tras usar todas las pistas."
+        }
+      };
+      const nextStepIndex = (state.practiceSession.currentStepIndex || 0) + 1;
+      state.practiceSession = { ...state.practiceSession, stepInputs, stepAttempts: nextAttempts, stepResults, currentStepIndex: nextStepIndex };
+      if (state.practiceSession.sessionId) {
+        await appendTutorSessionEvent(state.practiceSession.sessionId, {
+          type: "step-attempt",
+          stepId,
+          stepTitle: step.title,
+          answer: correctAnswer,
+          result: "correct",
+          attempts: nextAttempts[stepId],
+          failures: state.practiceSession.stepFailureCounts?.[stepId] || 0,
+          decisions: ["a3-auto-unlock"],
+          detail: "Respuesta desbloqueada automaticamente tras agotar todas las pistas."
+        });
+        await appendTutorSessionEvent(state.practiceSession.sessionId, {
+          type: "step-complete",
+          stepId,
+          stepTitle: step.title,
+          decisions: ["g2"]
+        });
+      }
+
+      // Check if all steps are done
+      const allCorrect = state.practiceSession.solution.steps.every((item) => stepResults[item.id]?.correct);
+      if (allCorrect || nextStepIndex >= state.practiceSession.solution.steps.length) {
+        await maybeMarkCurrentConceptKnown();
+      }
     }
   }
 
@@ -3697,6 +3799,40 @@ async function handleDrop(event) {
   }
 
   render();
+}
+
+async function pullModel(modelName) {
+  openLoadingPanel({
+    title: `Descargando ${modelName}`,
+    detail: "Preparando descarga del modelo..."
+  });
+
+  const removeListener = window.bridge.onPullProgress((data) => {
+    let detail = data.status || "Descargando...";
+    if (data.total > 0) {
+      const pct = Math.round((data.completed / data.total) * 100);
+      const totalMB = (data.total / 1e6).toFixed(0);
+      detail = `${data.status} — ${pct}% de ${totalMB} MB`;
+    }
+    state.loadingPanel = { ...state.loadingPanel, detail };
+    const el = document.getElementById("pull-progress-detail");
+    if (el) {
+      el.textContent = detail;
+    }
+  });
+
+  try {
+    await window.bridge.pullModel({
+      baseUrl: state.settings.ollamaBaseUrl,
+      modelName
+    });
+    await refreshOllamaModels(state.settings.ollamaBaseUrl);
+  } catch (error) {
+    state.ollama = { ok: false, message: `Error al descargar ${modelName}: ${error.message}` };
+  } finally {
+    removeListener();
+    closeLoadingPanel();
+  }
 }
 
 async function refreshOllamaModels(baseUrl) {

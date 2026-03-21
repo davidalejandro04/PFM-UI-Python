@@ -8,5 +8,13 @@ contextBridge.exposeInMainWorld("bridge", {
   listModels: (baseUrl) => ipcRenderer.invoke("ollama:list-models", baseUrl),
   chat: (payload) => ipcRenderer.invoke("ollama:chat", payload),
   cancelChat: (requestId) => ipcRenderer.invoke("ollama:cancel-chat", requestId),
+  pullModel: (payload) => ipcRenderer.invoke("ollama:pull-model", payload),
+  onPullProgress: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on("ollama:pull-progress", handler);
+    return () => ipcRenderer.removeListener("ollama:pull-progress", handler);
+  },
+  wipeData: () => ipcRenderer.invoke("data:wipe"),
+  getDataPath: () => ipcRenderer.invoke("data:path"),
   captureRegion: (rect) => ipcRenderer.invoke("window:capture-region", rect)
 });

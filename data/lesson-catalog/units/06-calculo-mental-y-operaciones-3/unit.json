@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-06-calculo-mental-y-operaciones-3",
+  "slug": "06-calculo-mental-y-operaciones-3",
+  "title": "Cálculo mental y operaciones — 3.º",
+  "metadata": {
+    "contentType": "number-operations",
+    "coursework": "mathematics-primary",
+    "lineIndex": 2,
+    "unitNumber": 2,
+    "gradeBands": ["3"],
+    "tags": ["calculo-mental", "sumas", "restas", "estimacion"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-calculo-mental-3-01-trucos-para-sumar-y-restar",
+      "order": 1,
+      "file": "./lessons/01-trucos-para-sumar-y-restar.json"
+    },
+    {
+      "id": "lesson-calculo-mental-3-02-algoritmo-de-suma-y-resta",
+      "order": 2,
+      "file": "./lessons/02-algoritmo-de-suma-y-resta.json"
+    },
+    {
+      "id": "lesson-calculo-mental-3-03-estimacion-de-resultados",
+      "order": 3,
+      "file": "./lessons/03-estimacion-de-resultados.json"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-08-figuras-geometricas-3",
+  "slug": "08-figuras-geometricas-3",
+  "title": "Figuras geométricas — 3.º",
+  "metadata": {
+    "contentType": "geometry",
+    "coursework": "mathematics-primary",
+    "lineIndex": 4,
+    "unitNumber": 4,
+    "gradeBands": ["3"],
+    "tags": ["figuras-planas", "cuerpos-geometricos", "simetria"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-figuras-geometricas-3-01-figuras-planas",
+      "order": 1,
+      "file": "./lessons/01-figuras-planas.json"
+    },
+    {
+      "id": "lesson-figuras-geometricas-3-02-cuerpos-geometricos",
+      "order": 2,
+      "file": "./lessons/02-cuerpos-geometricos.json"
+    }
+  ]
+}

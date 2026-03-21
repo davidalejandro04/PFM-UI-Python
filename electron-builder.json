@@ -1,0 +1,35 @@
+{
+  "appId": "com.tutormate.electron",
+  "productName": "TutorMate",
+  "directories": {
+    "output": "dist",
+    "buildResources": "build"
+  },
+  "files": [
+    "electron/**/*",
+    "src/**/*",
+    "assets/**/*",
+    "data/**/*",
+    "package.json"
+  ],
+  "asar": true,
+  "win": {
+    "target": [
+      { "target": "nsis", "arch": ["x64"] }
+    ],
+    "icon": "build/icon.ico",
+    "extraFiles": [
+      { "from": "build/OllamaSetup.exe", "to": "OllamaSetup.exe" }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "installerIcon": "build/icon.ico",
+    "uninstallerIcon": "build/icon.ico",
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "include": "build/installer.nsh"
+  }
+}

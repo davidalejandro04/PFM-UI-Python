@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-11-multiplos-divisores-y-primos-5",
+  "slug": "11-multiplos-divisores-y-primos-5",
+  "title": "Múltiplos, divisores y primos — 5.º",
+  "metadata": {
+    "contentType": "number-theory",
+    "coursework": "mathematics-primary",
+    "lineIndex": 11,
+    "unitNumber": 11,
+    "gradeBands": ["5"],
+    "tags": ["multiplos", "divisores", "numeros-primos", "mcm", "mcd"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-multiplos-divisores-5-01-multiplos-y-divisores",
+      "order": 1,
+      "file": "./lessons/01-multiplos-y-divisores.json"
+    },
+    {
+      "id": "lesson-multiplos-divisores-5-02-numeros-primos-y-factorizacion",
+      "order": 2,
+      "file": "./lessons/02-numeros-primos-y-factorizacion.json"
+    },
+    {
+      "id": "lesson-multiplos-divisores-5-03-mcm-y-mcd",
+      "order": 3,
+      "file": "./lessons/03-mcm-y-mcd.json"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "unit-14-decimales-y-porcentajes-5",
+  "slug": "14-decimales-y-porcentajes-5",
+  "title": "Decimales y porcentajes — 5.º",
+  "metadata": {
+    "contentType": "decimals",
+    "coursework": "mathematics-primary",
+    "lineIndex": 14,
+    "unitNumber": 14,
+    "gradeBands": ["5"],
+    "tags": ["decimales", "operaciones-decimales", "porcentajes"]
+  },
+  "lessons": [
+    {
+      "id": "lesson-decimales-5-01-numeros-decimales",
+      "order": 1,
+      "file": "./lessons/01-numeros-decimales.json"
+    },
+    {
+      "id": "lesson-decimales-5-02-operaciones-con-decimales",
+      "order": 2,
+      "file": "./lessons/02-operaciones-con-decimales.json"
+    },
+    {
+      "id": "lesson-decimales-5-03-porcentajes",
+      "order": 3,
+      "file": "./lessons/03-porcentajes.json"
+    }
+  ]
+}

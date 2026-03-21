@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "id": "lesson-numeros-grandes-5-03-operaciones-combinadas",
+  "slug": "03-operaciones-combinadas",
+  "unitId": "unit-09-numeros-grandes-y-valor-posicional-5",
+  "order": 3,
+  "title": "Operaciones combinadas (5.º)",
+  "description": "Propiedades de la suma y la resta, estimación y orden de operaciones con paréntesis.",
+  "metadata": {
+    "contentType": "lesson",
+    "coursework": "mathematics-primary",
+    "lineIndex": 9,
+    "lessonIndex": 3,
+    "gradeBands": [
+      "5"
+    ],
+    "sourceFormat": "legacy-lessons-json"
+  },
+  "formulas": [
+    {
+      "latex": "a + b = b + a",
+      "displayMode": true,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "(a + b) + c = a + (b + c)",
+      "displayMode": true,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "(5 + 15) - 8 = 20 - 8 = 12",
+      "displayMode": true,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "18 - (5 + 6) = 18 - 11 = 7",
+      "displayMode": true,
+      "stageIds": [
+        "stage-02"
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "kind": "stylesheet",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css",
+      "stageIds": [
+        "stage-01",
+        "stage-02",
+        "stage-03"
+      ]
+    },
+    {
+      "kind": "script",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js",
+      "stageIds": [
+        "stage-01",
+        "stage-02",
+        "stage-03"
+      ]
+    },
+    {
+      "kind": "script",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js",
+      "stageIds": [
+        "stage-01",
+        "stage-02",
+        "stage-03"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "stage-01",
+      "order": 1,
+      "title": "Propiedades de suma y resta",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Propiedades de suma y resta</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .step { margin:.3rem 0; }\n  </style>\n</head>\n<body>\n  <h1>Propiedades de suma y resta</h1>\n  <p><span class=\"badge\">5.&ordm; grado</span><span class=\"badge\">Propiedades</span></p>\n\n  <p>Conocer las propiedades de las operaciones nos ayuda a calcular m&aacute;s r&aacute;pido y a verificar resultados.</p>\n\n  <h2>Propiedad conmutativa de la suma</h2>\n  <p>El orden de los sumandos no altera la suma:</p>\n  $$a + b = b + a$$\n  <div class=\"example\">\n    <h4>Ejemplo</h4>\n    <p>$3\\,500 + 2\\,400 = 2\\,400 + 3\\,500 = 5\\,900$</p>\n    <p>Puedes sumar en el orden que te resulte m&aacute;s c&oacute;modo.</p>\n  </div>\n\n  <div class=\"tip\">\n    <strong>Atenci&oacute;n:</strong> La resta <strong>no</strong> es conmutativa. $10 - 3 = 7$, pero $3 - 10$ da un resultado diferente.\n  </div>\n\n  <h2>Propiedad asociativa de la suma</h2>\n  <p>Puedes agrupar los sumandos de distintas formas y el resultado no cambia:</p>\n  $$(a + b) + c = a + (b + c)$$\n  <div class=\"example\">\n    <h4>Ejemplo</h4>\n    <p>Calcula $1\\,200 + 800 + 3\\,000$:</p>\n    <p class=\"step\">Forma 1: $(1\\,200 + 800) + 3\\,000 = 2\\,000 + 3\\,000 = 5\\,000$</p>\n    <p class=\"step\">Forma 2: $1\\,200 + (800 + 3\\,000) = 1\\,200 + 3\\,800 = 5\\,000$</p>\n    <p>El resultado es el mismo: $5\\,000$.</p>\n  </div>\n\n  <h2>Estimaci&oacute;n con n&uacute;meros grandes</h2>\n  <p>Cuando trabajas con n&uacute;meros grandes, puedes <strong>redondear</strong> para estimar el resultado antes de calcular.</p>\n  <div class=\"example\">\n    <h4>Ejemplo</h4>\n    <p>Estima $48\\,720 + 31\\,480$:</p>\n    <p class=\"step\">Redondeamos: $48\\,720 \\approx 49\\,000$ y $31\\,480 \\approx 31\\,000$</p>\n    <p class=\"step\">Estimaci&oacute;n: $49\\,000 + 31\\,000 = 80\\,000$</p>\n    <p class=\"step\">Resultado exacto: $48\\,720 + 31\\,480 = 80\\,200$</p>\n    <p>La estimaci&oacute;n ($80\\,000$) est&aacute; muy cerca del resultado exacto ($80\\,200$).</p>\n  </div>\n\n  <div class=\"example\">\n    <h4>Ejemplo</h4>\n    <p>Estima $92\\,300 - 47\\,800$:</p>\n    <p class=\"step\">Redondeamos: $92\\,300 \\approx 92\\,000$ y $47\\,800 \\approx 48\\,000$</p>\n    <p class=\"step\">Estimaci&oacute;n: $92\\,000 - 48\\,000 = 44\\,000$</p>\n    <p class=\"step\">Resultado exacto: $92\\,300 - 47\\,800 = 44\\,500$</p>\n  </div>\n\n  <div class=\"note\">\n    <strong>Recuerda:</strong> La estimaci&oacute;n sirve para comprobar si tu resultado es razonable. Si est&aacute; muy lejos de la estimaci&oacute;n, revisa tu c&aacute;lculo.\n  </div>\n\n  <script>\n  document.addEventListener(\"DOMContentLoaded\", function() {\n    renderMathInElement(document.body, {\n      delimiters: [{left: \"$$\", right: \"$$\", display: true},{left: \"$\", right: \"$\", display: false}]\n    });\n  });\n  </script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "a + b = b + a",
+          "displayMode": true
+        },
+        {
+          "latex": "(a + b) + c = a + (b + c)",
+          "displayMode": true
+        },
+        {
+          "latex": "3\\,500 + 2\\,400 = 2\\,400 + 3\\,500 = 5\\,900",
+          "displayMode": false
+        },
+        {
+          "latex": "48\\,720 + 31\\,480",
+          "displayMode": false
+        },
+        {
+          "latex": "48\\,720 \\approx 49\\,000",
+          "displayMode": false
+        },
+        {
+          "latex": "92\\,300 - 47\\,800 = 44\\,500",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    },
+    {
+      "id": "stage-02",
+      "order": 2,
+      "title": "Operaciones combinadas",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Operaciones combinadas</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .step { margin:.3rem 0; }\n  </style>\n</head>\n<body>\n  <h1>Operaciones combinadas</h1>\n  <p><span class=\"badge\">5.&ordm; grado</span><span class=\"badge\">Orden de operaciones</span></p>\n\n  <p>Cuando una expresi&oacute;n tiene m&aacute;s de una operaci&oacute;n (sumas y restas mezcladas), debemos seguir un <strong>orden</strong> para resolverla correctamente.</p>\n\n  <h2>Regla principal: par&eacute;ntesis primero</h2>\n  <div class=\"tip\">\n    <strong>Regla (Santillana):</strong> &laquo;Para calcular operaciones combinadas, calculamos primero (si hay) las operaciones entre par&eacute;ntesis.&raquo; Luego realizamos las sumas y restas <strong>de izquierda a derecha</strong>.\n  </div>\n\n  <div class=\"example\">\n    <h4>Ejemplo 1</h4>\n    <p>Resuelve $(5 + 15) - 8$:</p>\n    <p class=\"step\">Paso 1: Resolvemos el par&eacute;ntesis: $5 + 15 = 20$</p>\n    <p class=\"step\">Paso 2: Restamos: $20 - 8 = 12$</p>\n    $$(5 + 15) - 8 = 12$$\n  </div>\n\n  <div class=\"example\">\n    <h4>Ejemplo 2</h4>\n    <p>Resuelve $18 - (5 + 6)$:</p>\n    <p class=\"step\">Paso 1: Resolvemos el par&eacute;ntesis: $5 + 6 = 11$</p>\n    <p class=\"step\">Paso 2: Restamos: $18 - 11 = 7$</p>\n    $$18 - (5 + 6) = 7$$\n  </div>\n\n  <div class=\"example\">\n    <h4>Ejemplo 3</h4>\n    <p>Resuelve $(30 - 12) + (8 + 5)$:</p>\n    <p class=\"step\">Paso 1: Primer par&eacute;ntesis: $30 - 12 = 18$</p>\n    <p class=\"step\">Paso 2: Segundo par&eacute;ntesis: $8 + 5 = 13$</p>\n    <p class=\"step\">Paso 3: Sumamos: $18 + 13 = 31$</p>\n    $$(30 - 12) + (8 + 5) = 31$$\n  </div>\n\n  <h2>Sin par&eacute;ntesis: de izquierda a derecha</h2>\n  <p>Cuando no hay par&eacute;ntesis, resolvemos las sumas y restas en orden, de izquierda a derecha.</p>\n  <div class=\"example\">\n    <h4>Ejemplo 4</h4>\n    <p>Resuelve $25 + 10 - 7 + 3$:</p>\n    <p class=\"step\">$25 + 10 = 35$</p>\n    <p class=\"step\">$35 - 7 = 28$</p>\n    <p class=\"step\">$28 + 3 = 31$</p>\n    <p>Resultado: $31$</p>\n  </div>\n\n  <div class=\"example\">\n    <h4>Ejemplo 5 &mdash; Con n&uacute;meros grandes</h4>\n    <p>Resuelve $(12\\,000 + 8\\,500) - 3\\,200$:</p>\n    <p class=\"step\">Paso 1: $12\\,000 + 8\\,500 = 20\\,500$</p>\n    <p class=\"step\">Paso 2: $20\\,500 - 3\\,200 = 17\\,300$</p>\n    <p>Resultado: $17\\,300$</p>\n  </div>\n\n  <div class=\"example\">\n    <h4>Problema del libro Santillana</h4>\n    <p>Cinthia tiene una colecci&oacute;n de 23 libros, divididos en 3 grupos: fantas&iacute;a (6 libros), aventura (9 libros) y ciencia. &iquest;Cu&aacute;ntos libros de ciencia tiene?</p>\n    <p class=\"step\">Paso 1: Resolvemos el par&eacute;ntesis: $6 + 9 = 15$</p>\n    <p class=\"step\">Paso 2: Restamos: $23 - 15 = 8$</p>\n    $$23 - (6 + 9) = 23 - 15 = 8$$\n    <p>Cinthia tiene <strong>8 libros</strong> de ciencia.</p>\n  </div>\n\n  <div class=\"note\">\n    <strong>Recuerda:</strong> Los par&eacute;ntesis son como una &laquo;se&ntilde;al de prioridad&raquo;. Siempre hay que resolverlos antes que todo lo dem&aacute;s.\n  </div>\n\n  <script>\n  document.addEventListener(\"DOMContentLoaded\", function() {\n    renderMathInElement(document.body, {\n      delimiters: [{left: \"$$\", right: \"$$\", display: true},{left: \"$\", right: \"$\", display: false}]\n    });\n  });\n  </script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "(5 + 15) - 8 = 20 - 8 = 12",
+          "displayMode": true
+        },
+        {
+          "latex": "18 - (5 + 6) = 18 - 11 = 7",
+          "displayMode": true
+        },
+        {
+          "latex": "(30 - 12) + (8 + 5) = 31",
+          "displayMode": true
+        },
+        {
+          "latex": "25 + 10 - 7 + 3",
+          "displayMode": false
+        },
+        {
+          "latex": "(12\\,000 + 8\\,500) - 3\\,200 = 17\\,300",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    },
+    {
+      "id": "stage-03",
+      "order": 3,
+      "title": "Práctica guiada",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Pr&aacute;ctica guiada &mdash; Operaciones combinadas</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .step { margin:.3rem 0; }\n  </style>\n</head>\n<body>\n  <h1>Pr&aacute;ctica guiada</h1>\n  <p><span class=\"badge\">5.&ordm; grado</span><span class=\"badge\">Ejercicios</span></p>\n\n  <h2>Parte A: Propiedades</h2>\n  <div class=\"task\">\n    <h4>Ejercicio 1 &mdash; Propiedad conmutativa</h4>\n    <p>Completa usando la propiedad conmutativa:</p>\n    <p class=\"step\">a) $250 + 430 = $ ___ $+ 250$</p>\n    <p class=\"step\">b) $1\\,800 + 3\\,200 = 3\\,200 +$ ___</p>\n    <p class=\"step\">c) &iquest;Se puede aplicar la propiedad conmutativa a $15 - 9$? Explica.</p>\n  </div>\n\n  <div class=\"task\">\n    <h4>Ejercicio 2 &mdash; Propiedad asociativa</h4>\n    <p>Resuelve agrupando de la forma que te resulte m&aacute;s f&aacute;cil:</p>\n    <p class=\"step\">a) $600 + 400 + 2\\,500 = $ ___</p>\n    <p class=\"step\">b) $1\\,350 + 650 + 4\\,000 = $ ___</p>\n    <p class=\"step\">c) $75 + 125 + 300 + 500 = $ ___</p>\n  </div>\n\n  <h2>Parte B: Estimaci&oacute;n</h2>\n  <div class=\"task\">\n    <h4>Ejercicio 3 &mdash; Estimar resultados</h4>\n    <p>Redondea a la unidad de mil m&aacute;s cercana y estima:</p>\n    <p class=\"step\">a) $7\\,820 + 4\\,190 \\approx$ ___</p>\n    <p class=\"step\">b) $56\\,300 - 23\\,700 \\approx$ ___</p>\n    <p class=\"step\">c) $134\\,500 + 65\\,800 \\approx$ ___</p>\n  </div>\n\n  <h2>Parte C: Operaciones combinadas</h2>\n  <div class=\"task\">\n    <h4>Ejercicio 4 &mdash; Resuelve paso a paso</h4>\n    <p class=\"step\">a) $(8 + 12) - 5 = $ ___</p>\n    <p class=\"step\">b) $30 - (7 + 13) = $ ___</p>\n    <p class=\"step\">c) $(45 - 20) + (10 + 5) = $ ___</p>\n    <p class=\"step\">d) $100 - (25 + 30) + 15 = $ ___</p>\n  </div>\n\n  <div class=\"task\">\n    <h4>Ejercicio 5 &mdash; Con n&uacute;meros grandes</h4>\n    <p class=\"step\">a) $(15\\,000 + 5\\,000) - 8\\,200 = $ ___</p>\n    <p class=\"step\">b) $50\\,000 - (12\\,000 + 18\\,000) = $ ___</p>\n    <p class=\"step\">c) $(42\\,500 - 12\\,500) + (7\\,300 + 2\\,700) = $ ___</p>\n  </div>\n\n  <div class=\"task\">\n    <h4>Ejercicio 6 &mdash; Coloca los par&eacute;ntesis</h4>\n    <p>A&ntilde;ade par&eacute;ntesis para que la igualdad sea correcta:</p>\n    <p class=\"step\">a) $20 + 5 - 10 = 15$  &rarr; &iquest;D&oacute;nde van los par&eacute;ntesis?</p>\n    <p class=\"step\">b) $30 - 10 + 5 = 15$  &rarr; &iquest;D&oacute;nde van los par&eacute;ntesis?</p>\n    <p class=\"step\">c) $50 - 20 - 10 = 40$ &rarr; &iquest;D&oacute;nde van los par&eacute;ntesis?</p>\n  </div>\n\n  <h2>Parte D: Problemas</h2>\n  <div class=\"task\">\n    <h4>Ejercicio 7</h4>\n    <p>Sof&iacute;a ten&iacute;a $\\text{Bs }150$. Recibi&oacute; $\\text{Bs }80$ de regalo y luego gast&oacute; $\\text{Bs }95$ en &uacute;tiles escolares. &iquest;Cu&aacute;nto dinero le queda?</p>\n    <p>Escribe la operaci&oacute;n combinada y resu&eacute;lvela.</p>\n  </div>\n\n  <div class=\"task\">\n    <h4>Ejercicio 8</h4>\n    <p>En una biblioteca hay $12\\,500$ libros. Llegaron $3\\,200$ libros nuevos y se prestaron $1\\,850$. &iquest;Cu&aacute;ntos libros hay ahora?</p>\n  </div>\n\n  <div class=\"note\">\n    <strong>Respuestas:</strong><br/>\n    1a) 430 &middot; 1b) 1&thinsp;800 &middot; 1c) No, la resta no es conmutativa<br/>\n    2a) 3&thinsp;500 &middot; 2b) 6&thinsp;000 &middot; 2c) 1&thinsp;000<br/>\n    3a) 8&thinsp;000 + 4&thinsp;000 = 12&thinsp;000 &middot; 3b) 56&thinsp;000 &minus; 24&thinsp;000 = 32&thinsp;000 &middot; 3c) 135&thinsp;000 + 66&thinsp;000 = 201&thinsp;000<br/>\n    4a) 15 &middot; 4b) 10 &middot; 4c) 40 &middot; 4d) 60<br/>\n    5a) 11&thinsp;800 &middot; 5b) 20&thinsp;000 &middot; 5c) 40&thinsp;000<br/>\n    6a) $(20 + 5) - 10 = 15$ &middot; 6b) $30 - (10 + 5) = 15$ &middot; 6c) $50 - (20 - 10) = 40$<br/>\n    7) $150 + 80 - 95 = 135$ Bs &middot; 8) $12\\,500 + 3\\,200 - 1\\,850 = 13\\,850$ libros\n  </div>\n\n  <script>\n  document.addEventListener(\"DOMContentLoaded\", function() {\n    renderMathInElement(document.body, {\n      delimiters: [{left: \"$$\", right: \"$$\", display: true},{left: \"$\", right: \"$\", display: false}]\n    });\n  });\n  </script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "(8 + 12) - 5",
+          "displayMode": false
+        },
+        {
+          "latex": "30 - (7 + 13)",
+          "displayMode": false
+        },
+        {
+          "latex": "(45 - 20) + (10 + 5)",
+          "displayMode": false
+        },
+        {
+          "latex": "100 - (25 + 30) + 15",
+          "displayMode": false
+        },
+        {
+          "latex": "(15\\,000 + 5\\,000) - 8\\,200",
+          "displayMode": false
+        },
+        {
+          "latex": "50\\,000 - (12\\,000 + 18\\,000)",
+          "displayMode": false
+        },
+        {
+          "latex": "(42\\,500 - 12\\,500) + (7\\,300 + 2\\,700)",
+          "displayMode": false
+        },
+        {
+          "latex": "150 + 80 - 95 = 135",
+          "displayMode": false
+        },
+        {
+          "latex": "12\\,500 + 3\\,200 - 1\\,850 = 13\\,850",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    }
+  ]
+}

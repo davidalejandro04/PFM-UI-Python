@@ -1,17 +1,23 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const fs = require("fs/promises");
+const fsSync = require("fs");
+const crypto = require("crypto");
 const path = require("path");
 const { pathToFileURL } = require("url");
+
+const APP_DATA_NAME = ".TutorMate";
+const DATA_DIR = path.join(app.getPath("appData"), APP_DATA_NAME);
+app.setPath("userData", DATA_DIR);
 
 const ROOT_DIR = path.join(__dirname, "..");
 const LESSON_CATALOG_DIR = path.join(ROOT_DIR, "data", "lesson-catalog");
 
 const DEFAULT_PROFILE = {
   name: "",
-  avatar: "tutor",
-  grade: "5.o",
+  avatar: "",
+  grade: "",
   dailyGoal: 20,
-  focusArea: "Resolucion de problemas",
+  focusArea: "",
   responseMode: "coach",
   onboardingCompleted: false,
   xp: 0,
@@ -25,15 +31,22 @@ const DEFAULT_PROFILE = {
   interactionLog: []
 };
 
+const REQUIRED_MODEL = "gemma3:4b";
+
 const DEFAULT_SETTINGS = {
-  currentModel: "",
+  currentModel: REQUIRED_MODEL,
   ollamaBaseUrl: "http://127.0.0.1:11434",
   responseMode: "coach",
-  theme: "light"
+  theme: "light",
+  agentMode: true,
+  agentRouterModel: REQUIRED_MODEL,
+  agentTutorModel: REQUIRED_MODEL,
+  agentFunctionModel: REQUIRED_MODEL
 };
 
 const activeChatControllers = new Map();
 let lessonCatalogModulePromise = null;
+let machineId = null;
 
 function getLessonCatalogModule() {
   if (!lessonCatalogModulePromise) {
@@ -45,6 +58,47 @@ function getLessonCatalogModule() {
 
 function userFile(name) {
   return path.join(app.getPath("userData"), name);
+}
+
+function ensureMachineId() {
+  const idPath = userFile("machine-id");
+  try {
+    machineId = fsSync.readFileSync(idPath, "utf8").trim();
+  } catch {
+    machineId = crypto.randomUUID();
+    fsSync.mkdirSync(path.dirname(idPath), { recursive: true });
+    fsSync.writeFileSync(idPath, machineId, "utf8");
+  }
+  return machineId;
+}
+
+async function wipeUserData() {
+  const dataPath = app.getPath("userData");
+  try {
+    await fs.rm(dataPath, { recursive: true, force: true });
+  } catch {
+    // Directory may already be gone or locked.
+  }
+}
+
+async function confirmAndWipeData(parentWindow) {
+  const options = {
+    type: "question",
+    buttons: ["Conservar datos", "Eliminar datos"],
+    defaultId: 0,
+    cancelId: 0,
+    title: "Datos de TutorMate",
+    message: "¿Deseas eliminar los datos de usuario de TutorMate?",
+    detail: `Esto borrara perfil, progreso y configuracion almacenados en:\n${app.getPath("userData")}`
+  };
+  const { response } = parentWindow
+    ? await dialog.showMessageBox(parentWindow, options)
+    : await dialog.showMessageBox(options);
+  if (response === 1) {
+    await wipeUserData();
+    return true;
+  }
+  return false;
 }
 
 function sanitizeRect(rect = {}) {
@@ -123,7 +177,14 @@ async function chatWithOllama({
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama devolvio ${response.status}`);
+      let detail = "";
+      try {
+        const errBody = await response.json();
+        detail = errBody?.error || errBody?.message || "";
+      } catch {
+        // ignore parse failure
+      }
+      throw new Error(`Ollama devolvio ${response.status}${detail ? `: ${detail}` : ""}`);
     }
 
     const payload = await response.json();
@@ -140,6 +201,50 @@ async function chatWithOllama({
       activeChatControllers.delete(safeRequestId);
     }
   }
+}
+
+async function pullOllamaModel(event, { baseUrl, modelName }) {
+  const url = `${(baseUrl || "http://127.0.0.1:11434").replace(/\/$/, "")}/api/pull`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: modelName, stream: true })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Ollama pull fallo (${response.status})`);
+  }
+
+  const webContents = event.sender;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const data = JSON.parse(line);
+        webContents.send("ollama:pull-progress", {
+          modelName,
+          status: data.status || "",
+          total: data.total || 0,
+          completed: data.completed || 0
+        });
+      } catch {
+        // skip malformed JSON lines
+      }
+    }
+  }
+
+  return { ok: true };
 }
 
 function cancelOllamaChat(_event, requestId) {
@@ -169,6 +274,8 @@ async function captureRegion(event, rect) {
 }
 
 async function bootstrap() {
+  ensureMachineId();
+
   const { loadLessonCatalogFromDirectory } = await getLessonCatalogModule();
   const lessons = await loadLessonCatalogFromDirectory(LESSON_CATALOG_DIR);
   const profile = await readJson(userFile("profile.json"), DEFAULT_PROFILE);
@@ -202,7 +309,12 @@ async function bootstrap() {
     await writeJson(userFile("settings.json"), settings);
   }
 
-  return { lessons, profile, settings, availableModels, ollama };
+  return {
+    lessons, profile, settings, availableModels, ollama,
+    requiredModel: REQUIRED_MODEL,
+    machineId,
+    dataPath: app.getPath("userData")
+  };
 }
 
 function createWindow() {
@@ -238,6 +350,12 @@ app.whenReady().then(() => {
   ipcMain.handle("ollama:list-models", (_event, baseUrl) => listOllamaModels(baseUrl));
   ipcMain.handle("ollama:chat", (_event, payload) => chatWithOllama(payload));
   ipcMain.handle("ollama:cancel-chat", cancelOllamaChat);
+  ipcMain.handle("ollama:pull-model", pullOllamaModel);
+  ipcMain.handle("data:wipe", async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return confirmAndWipeData(win);
+  });
+  ipcMain.handle("data:path", () => app.getPath("userData"));
   ipcMain.handle("window:capture-region", captureRegion);
 
   createWindow();

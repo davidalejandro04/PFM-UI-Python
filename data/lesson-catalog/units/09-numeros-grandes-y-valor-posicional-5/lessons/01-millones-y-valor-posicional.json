@@ -1,0 +1,230 @@
+{
+  "schemaVersion": 1,
+  "id": "lesson-numeros-grandes-5-01-millones-y-valor-posicional",
+  "slug": "01-millones-y-valor-posicional",
+  "unitId": "unit-09-numeros-grandes-y-valor-posicional-5",
+  "order": 1,
+  "title": "Millones y valor posicional (5.º)",
+  "description": "Lectura, escritura y descomposición de números de hasta nueve cifras usando la tabla de valor posicional.",
+  "metadata": {
+    "contentType": "lesson",
+    "coursework": "mathematics-primary",
+    "lineIndex": 9,
+    "lessonIndex": 1,
+    "gradeBands": [
+      "5"
+    ],
+    "sourceFormat": "legacy-lessons-json"
+  },
+  "formulas": [
+    {
+      "latex": "342\\,495\\,757",
+      "displayMode": false,
+      "stageIds": [
+        "stage-01"
+      ]
+    },
+    {
+      "latex": "23\\,575\\,609 = 20\\,000\\,000 + 3\\,000\\,000 + 500\\,000 + 70\\,000 + 5\\,000 + 600 + 9",
+      "displayMode": true,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "5\\,032\\,841 = 5\\,000\\,000 + 30\\,000 + 2\\,000 + 800 + 40 + 1",
+      "displayMode": true,
+      "stageIds": [
+        "stage-02"
+      ]
+    },
+    {
+      "latex": "100\\,250\\,003 = 100\\,000\\,000 + 250\\,000 + 3",
+      "displayMode": true,
+      "stageIds": [
+        "stage-02"
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "kind": "stylesheet",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css",
+      "stageIds": [
+        "stage-01",
+        "stage-02",
+        "stage-03"
+      ]
+    },
+    {
+      "kind": "script",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js",
+      "stageIds": [
+        "stage-01",
+        "stage-02",
+        "stage-03"
+      ]
+    },
+    {
+      "kind": "script",
+      "source": "external",
+      "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js",
+      "stageIds": [
+        "stage-01",
+        "stage-02",
+        "stage-03"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "stage-01",
+      "order": 1,
+      "title": "El orden de los millones",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>El orden de los millones</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    table.vp { border-collapse: collapse; margin: 0.8rem auto; font-size: 0.95rem; }\n    table.vp th, table.vp td { border: 1px solid #bbb; padding: 6px 10px; text-align: center; }\n    table.vp th { background: #e8e8f8; }\n  </style>\n</head>\n<body>\n  <h1>El orden de los millones</h1>\n  <p><span class=\"badge\">5.&ordm; grado</span><span class=\"badge\">Valor posicional</span></p>\n\n  <p>Ya conoces los n&uacute;meros de hasta seis cifras (hasta las centenas de mil). Ahora vamos a trabajar con n&uacute;meros de <strong>siete, ocho y nueve cifras</strong>, es decir, los <strong>millones</strong>.</p>\n\n  <div class=\"tip\">\n    <strong>Definici&oacute;n (Santillana):</strong> &laquo;Los n&uacute;meros con 7, 8 y 9 cifras pertenecen al orden de los millones. Estos n&uacute;meros est&aacute;n compuestos por centenas de mill&oacute;n, decenas de mill&oacute;n, unidades de mill&oacute;n, centenas de mil, decenas de mil, unidades de mil, centenas, decenas y unidades.&raquo;\n  </div>\n\n  <h2>&iquest;D&oacute;nde encontramos n&uacute;meros tan grandes?</h2>\n  <p>Los n&uacute;meros de millones aparecen en contextos reales. Por ejemplo:</p>\n  <ul>\n    <li>El <strong>Nyasasaurus parringtoni</strong> es considerado el primer dinosaurio que habit&oacute; la Tierra. Vivi&oacute; hace aproximadamente $243\\,000\\,000$ de a&ntilde;os.</li>\n    <li>El oc&eacute;ano Pac&iacute;fico tiene un &aacute;rea de $165\\,250\\,000$ km&sup2;.</li>\n    <li>El oc&eacute;ano Atl&aacute;ntico tiene un &aacute;rea de $106\\,400\\,000$ km&sup2;.</li>\n  </ul>\n\n  <h2>Tabla de valor posicional</h2>\n  <p>Cada cifra de un n&uacute;mero ocupa un lugar en la tabla. Desde la derecha hacia la izquierda, los &oacute;rdenes son:</p>\n\n  <table class=\"vp\">\n    <tr>\n      <th colspan=\"3\">Millones</th>\n      <th colspan=\"3\">Miles</th>\n      <th colspan=\"3\">Unidades</th>\n    </tr>\n    <tr>\n      <th>CM</th><th>DM</th><th>UM</th>\n      <th>Cm</th><th>Dm</th><th>Um</th>\n      <th>C</th><th>D</th><th>U</th>\n    </tr>\n    <tr>\n      <td>100&thinsp;000&thinsp;000</td><td>10&thinsp;000&thinsp;000</td><td>1&thinsp;000&thinsp;000</td>\n      <td>100&thinsp;000</td><td>10&thinsp;000</td><td>1&thinsp;000</td>\n      <td>100</td><td>10</td><td>1</td>\n    </tr>\n  </table>\n\n  <div class=\"tip\">\n    <strong>CM</strong> = centenas de mill&oacute;n &middot; <strong>DM</strong> = decenas de mill&oacute;n &middot; <strong>UM</strong> = unidades de mill&oacute;n<br/>\n    <strong>Cm</strong> = centenas de mil &middot; <strong>Dm</strong> = decenas de mil &middot; <strong>Um</strong> = unidades de mil<br/>\n    <strong>C</strong> = centenas &middot; <strong>D</strong> = decenas &middot; <strong>U</strong> = unidades\n  </div>\n\n  <h2>Lectura de n&uacute;meros grandes</h2>\n  <p>Para leer un n&uacute;mero grande, separamos las cifras en grupos de tres, de derecha a izquierda, y leemos cada grupo.</p>\n\n  <div class=\"example\">\n    <h4>Ejemplo</h4>\n    <p>El n&uacute;mero $342\\,495\\,757$ se ubica as&iacute;:</p>\n    <table class=\"vp\">\n      <tr><th>CM</th><th>DM</th><th>UM</th><th>Cm</th><th>Dm</th><th>Um</th><th>C</th><th>D</th><th>U</th></tr>\n      <tr><td>3</td><td>4</td><td>2</td><td>4</td><td>9</td><td>5</td><td>7</td><td>5</td><td>7</td></tr>\n    </table>\n    <p>Se lee: <strong>trescientos cuarenta y dos millones cuatrocientos noventa y cinco mil setecientos cincuenta y siete</strong>.</p>\n  </div>\n\n  <div class=\"example\">\n    <h4>Ejemplo</h4>\n    <p>El n&uacute;mero $15\\,008\\,230$ se lee: <strong>quince millones ocho mil doscientos treinta</strong>.</p>\n  </div>\n\n  <div class=\"example\">\n    <h4>Ejemplo</h4>\n    <p>El n&uacute;mero $200\\,000\\,001$ se lee: <strong>doscientos millones uno</strong>.</p>\n  </div>\n\n  <div class=\"note\">\n    <strong>Recuerda:</strong> Un mill&oacute;n es igual a 1&thinsp;000 veces mil. Es decir, $1\\,000\\,000 = 1\\,000 \\times 1\\,000$.\n  </div>\n\n  <script>\n  document.addEventListener(\"DOMContentLoaded\", function() {\n    renderMathInElement(document.body, {\n      delimiters: [{left: \"$$\", right: \"$$\", display: true},{left: \"$\", right: \"$\", display: false}]\n    });\n  });\n  </script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "342\\,495\\,757",
+          "displayMode": false
+        },
+        {
+          "latex": "15\\,008\\,230",
+          "displayMode": false
+        },
+        {
+          "latex": "200\\,000\\,001",
+          "displayMode": false
+        },
+        {
+          "latex": "1\\,000\\,000 = 1\\,000 \\times 1\\,000",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    },
+    {
+      "id": "stage-02",
+      "order": 2,
+      "title": "Descomposición",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Descomposici&oacute;n</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .step { margin:.3rem 0; }\n  </style>\n</head>\n<body>\n  <h1>Descomposici&oacute;n de n&uacute;meros grandes</h1>\n  <p><span class=\"badge\">5.&ordm; grado</span><span class=\"badge\">Valor posicional</span></p>\n\n  <p><strong>Descomponer</strong> un n&uacute;mero significa escribirlo como la suma del valor que aporta cada cifra seg&uacute;n su posici&oacute;n. Seg&uacute;n el libro Santillana, existen tres formas de descomposici&oacute;n:</p>\n\n  <div class=\"tip\">\n    <strong>Tres formas de descomposici&oacute;n:</strong><br/>\n    &bull; <strong>Descomposici&oacute;n seg&uacute;n el orden:</strong> Se expresa cada cifra con la abreviatura de su orden. Ej: $487\\,253\\,106 = 4\\text{CMi} + 8\\text{DMi} + 7\\text{UMi} + 2\\text{Cm} + 5\\text{Dm} + 3\\text{Um} + 1\\text{C} + 0\\text{D} + 6\\text{U}$<br/>\n    &bull; <strong>Descomposici&oacute;n aditiva:</strong> Se escribe la suma de los valores de cada cifra. Ej: $400\\,000\\,000 + 80\\,000\\,000 + 7\\,000\\,000 + \\ldots$<br/>\n    &bull; <strong>Descomposici&oacute;n multiplicativa:</strong> Se expresa cada cifra multiplicada por su valor posicional. Ej: $4 \\times 100\\,000\\,000 + 8 \\times 10\\,000\\,000 + 7 \\times 1\\,000\\,000 + \\ldots$\n  </div>\n\n  <div class=\"example\">\n    <h4>Ejemplo 1</h4>\n    <p>Descomponemos $23\\,575\\,609$:</p>\n    <p class=\"step\">El <strong>2</strong> est&aacute; en las decenas de mill&oacute;n &rarr; vale $20\\,000\\,000$</p>\n    <p class=\"step\">El <strong>3</strong> est&aacute; en las unidades de mill&oacute;n &rarr; vale $3\\,000\\,000$</p>\n    <p class=\"step\">El <strong>5</strong> est&aacute; en las centenas de mil &rarr; vale $500\\,000$</p>\n    <p class=\"step\">El <strong>7</strong> est&aacute; en las decenas de mil &rarr; vale $70\\,000$</p>\n    <p class=\"step\">El <strong>5</strong> est&aacute; en las unidades de mil &rarr; vale $5\\,000$</p>\n    <p class=\"step\">El <strong>6</strong> est&aacute; en las centenas &rarr; vale $600$</p>\n    <p class=\"step\">El <strong>0</strong> est&aacute; en las decenas &rarr; vale $0$</p>\n    <p class=\"step\">El <strong>9</strong> est&aacute; en las unidades &rarr; vale $9$</p>\n    <p>Resultado:</p>\n    $$23\\,575\\,609 = 20\\,000\\,000 + 3\\,000\\,000 + 500\\,000 + 70\\,000 + 5\\,000 + 600 + 9$$\n  </div>\n\n  <div class=\"example\">\n    <h4>Ejemplo 2</h4>\n    <p>Descomponemos $5\\,032\\,841$:</p>\n    $$5\\,032\\,841 = 5\\,000\\,000 + 30\\,000 + 2\\,000 + 800 + 40 + 1$$\n    <p>F&iacute;jate que las posiciones con cifra 0 no se escriben en la descomposici&oacute;n.</p>\n  </div>\n\n  <div class=\"example\">\n    <h4>Ejemplo 3</h4>\n    <p>Descomponemos $100\\,250\\,003$:</p>\n    $$100\\,250\\,003 = 100\\,000\\,000 + 200\\,000 + 50\\,000 + 3$$\n  </div>\n\n  <div class=\"tip\">\n    <strong>Consejo:</strong> Para verificar tu descomposici&oacute;n, suma todos los valores. Si obtienes el n&uacute;mero original, &iexcl;est&aacute; correcta!\n  </div>\n\n  <h2>Composici&oacute;n de n&uacute;meros</h2>\n  <p>Tambi&eacute;n puedes hacer el proceso inverso: a partir de una descomposici&oacute;n, encontrar el n&uacute;mero.</p>\n  <div class=\"example\">\n    <h4>Ejemplo</h4>\n    <p>&iquest;Qu&eacute; n&uacute;mero es?</p>\n    $$7\\,000\\,000 + 400\\,000 + 50\\,000 + 3\\,000 + 200 + 10 + 6$$\n    <p><strong>Respuesta:</strong> $7\\,453\\,216$</p>\n  </div>\n\n  <div class=\"note\">\n    <strong>Recuerda:</strong> Cada cifra tiene un valor diferente seg&uacute;n el lugar que ocupa. El 5 en las centenas vale 500, pero en las decenas de mil vale 50&thinsp;000.\n  </div>\n\n  <script>\n  document.addEventListener(\"DOMContentLoaded\", function() {\n    renderMathInElement(document.body, {\n      delimiters: [{left: \"$$\", right: \"$$\", display: true},{left: \"$\", right: \"$\", display: false}]\n    });\n  });\n  </script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "23\\,575\\,609 = 20\\,000\\,000 + 3\\,000\\,000 + 500\\,000 + 70\\,000 + 5\\,000 + 600 + 9",
+          "displayMode": true
+        },
+        {
+          "latex": "5\\,032\\,841 = 5\\,000\\,000 + 30\\,000 + 2\\,000 + 800 + 40 + 1",
+          "displayMode": true
+        },
+        {
+          "latex": "100\\,250\\,003 = 100\\,000\\,000 + 200\\,000 + 50\\,000 + 3",
+          "displayMode": true
+        },
+        {
+          "latex": "7\\,000\\,000 + 400\\,000 + 50\\,000 + 3\\,000 + 200 + 10 + 6",
+          "displayMode": true
+        },
+        {
+          "latex": "7\\,453\\,216",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    },
+    {
+      "id": "stage-03",
+      "order": 3,
+      "title": "Práctica guiada",
+      "html": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Pr&aacute;ctica guiada &mdash; Millones y valor posicional</title>\n  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css\">\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js\"></script>\n  <script defer src=\"https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js\"></script>\n  <style>\n    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; padding: 1rem; }\n    h1, h2, h3 { margin: 0.2em 0; }\n    .badge { display:inline-block; font-size: 0.8rem; padding: 0.15rem 0.5rem; border-radius: 999px; background:#eef; margin-right: .4rem; }\n    .example, .task { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; margin: 0.8rem 0; }\n    .note { font-size: .9rem; color:#333; background:#fafafa; padding:.6rem .8rem; border-left: 3px solid #ddd; border-radius:6px; }\n    .tip { background: #f0fbff; border-left: 4px solid #6ac8ff; padding: 10px 12px; margin: 14px 0; }\n    .step { margin:.3rem 0; }\n  </style>\n</head>\n<body>\n  <h1>Pr&aacute;ctica guiada</h1>\n  <p><span class=\"badge\">5.&ordm; grado</span><span class=\"badge\">Ejercicios</span></p>\n\n  <h2>Parte A: Lectura de n&uacute;meros</h2>\n  <div class=\"task\">\n    <h4>Ejercicio 1 &mdash; Escribe con palabras</h4>\n    <p>Escribe c&oacute;mo se leen estos n&uacute;meros:</p>\n    <p class=\"step\">a) $5\\,340\\,200$</p>\n    <p class=\"step\">b) $18\\,007\\,050$</p>\n    <p class=\"step\">c) $230\\,100\\,400$</p>\n  </div>\n\n  <div class=\"task\">\n    <h4>Ejercicio 2 &mdash; Escribe con cifras</h4>\n    <p>Escribe el n&uacute;mero que corresponde:</p>\n    <p class=\"step\">a) Doce millones trescientos cuarenta y cinco mil seiscientos setenta y ocho</p>\n    <p class=\"step\">b) Cien millones quinientos mil tres</p>\n    <p class=\"step\">c) Quinientos nueve millones veinte</p>\n  </div>\n\n  <h2>Parte B: Descomposici&oacute;n</h2>\n  <div class=\"task\">\n    <h4>Ejercicio 3 &mdash; Descomponer</h4>\n    <p>Escribe la descomposici&oacute;n de cada n&uacute;mero:</p>\n    <p class=\"step\">a) $4\\,562\\,308 = $ ___</p>\n    <p class=\"step\">b) $70\\,805\\,010 = $ ___</p>\n    <p class=\"step\">c) $123\\,456\\,789 = $ ___</p>\n  </div>\n\n  <div class=\"task\">\n    <h4>Ejercicio 4 &mdash; Componer</h4>\n    <p>&iquest;Qu&eacute; n&uacute;mero forman estas descomposiciones?</p>\n    <p class=\"step\">a) $8\\,000\\,000 + 200\\,000 + 50\\,000 + 4\\,000 + 300 + 60 + 1 = $ ___</p>\n    <p class=\"step\">b) $40\\,000\\,000 + 7\\,000\\,000 + 90\\,000 + 500 + 2 = $ ___</p>\n  </div>\n\n  <h2>Parte C: Series</h2>\n  <div class=\"task\">\n    <h4>Ejercicio 5 &mdash; Completar la serie</h4>\n    <p>Descubre el patr&oacute;n y escribe los dos n&uacute;meros que faltan:</p>\n    <p class=\"step\">a) $1\\,000\\,000$ &mdash; $2\\,000\\,000$ &mdash; $3\\,000\\,000$ &mdash; ___ &mdash; ___</p>\n    <p class=\"step\">b) $10\\,500\\,000$ &mdash; $11\\,000\\,000$ &mdash; $11\\,500\\,000$ &mdash; ___ &mdash; ___</p>\n    <p class=\"step\">c) $250\\,000\\,000$ &mdash; $200\\,000\\,000$ &mdash; $150\\,000\\,000$ &mdash; ___ &mdash; ___</p>\n  </div>\n\n  <h2>Parte D: Valor de una cifra</h2>\n  <div class=\"task\">\n    <h4>Ejercicio 6 &mdash; &iquest;Cu&aacute;nto vale?</h4>\n    <p>En el n&uacute;mero $68\\,325\\,174$, indica el valor de:</p>\n    <p class=\"step\">a) La cifra 6: ___</p>\n    <p class=\"step\">b) La cifra 3: ___</p>\n    <p class=\"step\">c) La cifra 5: ___</p>\n    <p class=\"step\">d) La cifra 1: ___</p>\n  </div>\n\n  <div class=\"note\">\n    <strong>Respuestas:</strong><br/>\n    1a) cinco millones trescientos cuarenta mil doscientos &middot; 1b) dieciocho millones siete mil cincuenta &middot; 1c) doscientos treinta millones cien mil cuatrocientos<br/>\n    2a) 12&thinsp;345&thinsp;678 &middot; 2b) 100&thinsp;500&thinsp;003 &middot; 2c) 509&thinsp;000&thinsp;020<br/>\n    3a) 4&thinsp;000&thinsp;000 + 500&thinsp;000 + 60&thinsp;000 + 2&thinsp;000 + 300 + 8 &middot; 3b) 70&thinsp;000&thinsp;000 + 800&thinsp;000 + 5&thinsp;000 + 10 &middot; 3c) 100&thinsp;000&thinsp;000 + 20&thinsp;000&thinsp;000 + 3&thinsp;000&thinsp;000 + 400&thinsp;000 + 50&thinsp;000 + 6&thinsp;000 + 700 + 80 + 9<br/>\n    4a) 8&thinsp;254&thinsp;361 &middot; 4b) 47&thinsp;090&thinsp;502<br/>\n    5a) 4&thinsp;000&thinsp;000 y 5&thinsp;000&thinsp;000 &middot; 5b) 12&thinsp;000&thinsp;000 y 12&thinsp;500&thinsp;000 &middot; 5c) 100&thinsp;000&thinsp;000 y 50&thinsp;000&thinsp;000<br/>\n    6a) 60&thinsp;000&thinsp;000 &middot; 6b) 300&thinsp;000 &middot; 6c) 5&thinsp;000 &middot; 6d) 100\n  </div>\n\n  <script>\n  document.addEventListener(\"DOMContentLoaded\", function() {\n    renderMathInElement(document.body, {\n      delimiters: [{left: \"$$\", right: \"$$\", display: true},{left: \"$\", right: \"$\", display: false}]\n    });\n  });\n  </script>\n</body>\n</html>",
+      "formulas": [
+        {
+          "latex": "5\\,340\\,200",
+          "displayMode": false
+        },
+        {
+          "latex": "18\\,007\\,050",
+          "displayMode": false
+        },
+        {
+          "latex": "230\\,100\\,400",
+          "displayMode": false
+        },
+        {
+          "latex": "4\\,562\\,308",
+          "displayMode": false
+        },
+        {
+          "latex": "70\\,805\\,010",
+          "displayMode": false
+        },
+        {
+          "latex": "123\\,456\\,789",
+          "displayMode": false
+        },
+        {
+          "latex": "68\\,325\\,174",
+          "displayMode": false
+        },
+        {
+          "latex": "8\\,000\\,000 + 200\\,000 + 50\\,000 + 4\\,000 + 300 + 60 + 1",
+          "displayMode": false
+        },
+        {
+          "latex": "40\\,000\\,000 + 7\\,000\\,000 + 90\\,000 + 500 + 2",
+          "displayMode": false
+        }
+      ],
+      "assets": [
+        {
+          "kind": "stylesheet",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+        },
+        {
+          "kind": "script",
+          "source": "external",
+          "target": "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+        }
+      ]
+    }
+  ]
+}
