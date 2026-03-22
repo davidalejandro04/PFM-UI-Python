@@ -1,7 +1,7 @@
 {
-  "name": "tutormate-electron",
+  "name": "mi-cuaderno",
   "version": "1.0.0",
-  "description": "Desktop math tutor rebuilt as an Electron app with Ollama local runtime.",
+  "description": "Mi cuaderno — aprendizaje por materias con tutor local.",
   "license": "Apache-2.0",
   "main": "electron/main.cjs",
   "scripts": {

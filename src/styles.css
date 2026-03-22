@@ -1,25 +1,32 @@
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --page: #f4f0e6;
-  --surface: rgba(255, 253, 248, 0.98);
-  --surface-2: #fffaf0;
-  --line: #ddd8c8;
-  --text: #17313b;
-  --muted: #4a6370;
-  --strong: #0d2530;
+  --page: #fef9e8;
+  --surface: rgba(255, 252, 230, 0.98);
+  --surface-2: #fffcf0;
+  --line: #ddd0a8;
+  --text: #2c1f08;
+  --muted: #7a6540;
+  --strong: #180e00;
   --primary: #4ec900;
   --primary-hover: #5ddd00;
   --primary-strong: #1c3a15;
-  --secondary: #17313b;
-  --secondary-soft: #e8f2f4;
-  --shadow: 0 8px 24px rgba(23, 49, 59, 0.10), 0 2px 6px rgba(23, 49, 59, 0.06);
-  --shadow-lg: 0 20px 48px rgba(23, 49, 59, 0.14), 0 4px 12px rgba(23, 49, 59, 0.08);
-  --radius: 24px;
-  --radius-sm: 16px;
+  --secondary: #1a4fa3;
+  --secondary-soft: #e8eef8;
+  --shadow: 0 8px 24px rgba(90, 60, 10, 0.12), 0 2px 6px rgba(90, 60, 10, 0.07);
+  --shadow-lg: 0 20px 48px rgba(90, 60, 10, 0.18), 0 4px 12px rgba(90, 60, 10, 0.10);
+  --radius: 20px;
+  --radius-sm: 14px;
   --ease-bounce: cubic-bezier(0.34, 1.42, 0.64, 1);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --transition: 160ms var(--ease-out);
+  /* Tab accent colors */
+  --tab-lessons: #e53935;
+  --tab-practice: #fb8c00;
+  --tab-tracking: #43a047;
+  --tab-profile: #1e88e5;
+  --tab-settings: #8e24aa;
+  --tab-close: #546e7a;
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
@@ -36,10 +43,17 @@ html, body {
   line-height: 1.55;
   color: var(--text);
   background:
-    radial-gradient(circle at 80% 0%, rgba(88, 204, 2, 0.13) 0%, transparent 36%),
-    radial-gradient(circle at 8% 0%, rgba(98, 203, 255, 0.14) 0%, transparent 28%),
-    radial-gradient(circle at 50% 100%, rgba(255, 210, 80, 0.08) 0%, transparent 40%),
-    linear-gradient(180deg, #f6f4ed 0%, var(--page) 100%);
+    repeating-linear-gradient(
+      90deg,
+      rgba(120, 72, 10, 0.05) 0px, rgba(120, 72, 10, 0.05) 1px,
+      transparent 1px, transparent 60px
+    ),
+    repeating-linear-gradient(
+      170deg,
+      rgba(160, 90, 10, 0.04) 0px, rgba(160, 90, 10, 0.04) 1px,
+      transparent 1px, transparent 90px
+    ),
+    linear-gradient(160deg, #c89048 0%, #b07828 35%, #c08838 65%, #a87020 100%);
 }
 
 body { overflow: hidden; }
@@ -67,6 +81,15 @@ body { overflow: hidden; }
   height: 100vh;
   min-height: 100vh;
   padding: 20px;
+}
+
+.app-shell-notebook {
+  height: 100vh;
+  min-height: 100vh;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ─── Cards / surfaces ───────────────────────────────────────────────────── */
@@ -272,6 +295,24 @@ body { overflow: hidden; }
   margin-left: 120px;
 }
 
+/* ─── Page section headings ─────────────────────────────────────────────── */
+.page-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  margin: -20px -20px 16px;
+  color: #fff;
+  font-weight: 900;
+  font-size: 18px;
+}
+
+.page-section-head.green  { background: linear-gradient(135deg, #2d9e1e, #4ec900); }
+.page-section-head.blue   { background: linear-gradient(135deg, #1035aa, #1a88d4); }
+.page-section-head.orange { background: linear-gradient(135deg, #c86000, #fb8c00); }
+.page-section-head.purple { background: linear-gradient(135deg, #6a12a8, #9c27b0); }
+
 /* ─── Student panel ──────────────────────────────────────────────────────── */
 .student-panel {
   position: fixed;
@@ -431,7 +472,7 @@ body { overflow: hidden; }
   padding: 20px;
 }
 
-/* ─── Lesson grid ────────────────────────────────────────────────────────── */
+/* ─── Lesson grid (legacy fallback) ──────────────────────────────────────── */
 .lesson-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -547,6 +588,1004 @@ body { overflow: hidden; }
   box-shadow: 0 2px 6px rgba(78, 201, 0, 0.35);
   transition: width 600ms var(--ease-out);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ─── NOTEBOOK / BOOK UI ────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Book scene (fills viewport, horizontal: book + nav on right) ──────── */
+.book-scene {
+  display: flex;
+  flex-direction: row-reverse;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+}
+
+/* ─── Book body (cover + footer, fills remaining space) ─────────────────── */
+.book-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* ─── Book cover ────────────────────────────────────────────────────────── */
+.book-cover {
+  position: relative;
+  background: linear-gradient(145deg, #2461c8 0%, #1a4fa3 40%, #103a85 100%);
+  border-radius: 20px;
+  padding: 14px 12px 12px;
+  border: 4px solid #0d2e6e;
+  box-shadow:
+    0 18px 48px rgba(16, 58, 133, 0.45),
+    0 6px 16px rgba(0, 0, 0, 0.22),
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.15);
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Book spread (two pages, fills cover) ──────────────────────────────── */
+.book-spread {
+  display: grid;
+  grid-template-columns: 1fr;
+  flex: 1;
+  min-height: 0;
+  background: transparent;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* ─── Book pages ────────────────────────────────────────────────────────── */
+.book-page {
+  position: relative;
+  background:
+    linear-gradient(rgba(200, 215, 230, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200, 215, 230, 0.12) 1px, transparent 1px),
+    linear-gradient(180deg, #fefcf8 0%, #f9f5ed 100%);
+  background-size: 22px 22px, 22px 22px, 100% 100%;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.book-page-left {
+  border-radius: 10px 0 0 10px;
+  box-shadow: inset -4px 0 12px rgba(0, 0, 0, 0.04);
+}
+
+.book-page-right {
+  border-radius: 0 10px 10px 0;
+  box-shadow: inset 4px 0 12px rgba(0, 0, 0, 0.04);
+}
+
+/* ─── Spiral binding ────────────────────────────────────────────────────── */
+.book-spine {
+  width: 36px;
+  background: linear-gradient(180deg, #e8e2d6 0%, #d5cfc3 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 18px 0;
+  position: relative;
+  z-index: 2;
+}
+
+.book-spine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0px,
+      transparent 10px,
+      rgba(0, 0, 0, 0.06) 10px,
+      rgba(0, 0, 0, 0.06) 11px
+    );
+}
+
+.spiral-ring {
+  width: 28px;
+  height: 14px;
+  border: 3px solid #999;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #d4d4d4 0%, #b0b0b0 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Book header (avatar + title) ──────────────────────────────────────── */
+.book-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.book-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffe8c2, #ffd699);
+  border: 3px solid #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.book-avatar img {
+  width: 36px;
+  height: 36px;
+}
+
+.book-title {
+  font-family: "Segoe UI Variable", "Segoe UI", "Comic Sans MS", cursive, sans-serif;
+  font-size: 26px;
+  font-weight: 900;
+  color: #2c1810;
+  letter-spacing: -0.3px;
+  margin: 0;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.book-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+/* ─── Lesson trail / path ───────────────────────────────────────────────── */
+.lesson-trail {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 10px;
+}
+
+.trail-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: relative;
+  min-height: 100px;
+}
+
+.trail-row:nth-child(odd) {
+  justify-content: flex-start;
+  padding-left: 10px;
+}
+
+.trail-row:nth-child(even) {
+  justify-content: flex-end;
+  padding-right: 10px;
+}
+
+/* ─── Trail connector (dashed path between nodes) ───────────────────────── */
+.trail-connector {
+  position: absolute;
+  border: 0;
+  border-top: 3px dashed #c4bfb0;
+  width: 60px;
+  top: 50%;
+  z-index: 0;
+}
+
+.trail-row:nth-child(odd) .trail-connector {
+  right: -30px;
+}
+
+.trail-row:nth-child(even) .trail-connector {
+  left: -30px;
+}
+
+/* ─── Lesson node (circular button) ─────────────────────────────────────── */
+.lesson-node {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+  transition: transform 200ms var(--ease-bounce);
+}
+
+.lesson-node:hover {
+  transform: scale(1.08);
+}
+
+.lesson-node:active {
+  transform: scale(0.95);
+  transition-duration: 80ms;
+}
+
+.node-circle {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  font-weight: 900;
+  color: #fff;
+  position: relative;
+  transition: box-shadow 200ms var(--ease-out), transform 200ms var(--ease-bounce);
+}
+
+/* Completed node — rich green, coin-like */
+.lesson-node.done .node-circle {
+  background: linear-gradient(145deg, #72e024 0%, #4fbb18 50%, #3d9910 100%);
+  box-shadow:
+    0 8px 20px rgba(78, 201, 0, 0.40),
+    0 3px 6px rgba(0, 0, 0, 0.14),
+    inset 0 -6px 0 rgba(0, 0, 0, 0.16),
+    inset 0 3px 0 rgba(255, 255, 255, 0.35),
+    inset 0 0 0 3px rgba(255,255,255,0.12);
+}
+
+/* Current / next node — bright blue, pulsing */
+.lesson-node.current .node-circle {
+  background: linear-gradient(145deg, #64caff 0%, #3aaeee 50%, #1a8ed4 100%);
+  box-shadow:
+    0 8px 20px rgba(58, 157, 224, 0.45),
+    0 3px 6px rgba(0, 0, 0, 0.14),
+    inset 0 -6px 0 rgba(0, 0, 0, 0.16),
+    inset 0 3px 0 rgba(255, 255, 255, 0.35),
+    inset 0 0 0 3px rgba(255,255,255,0.12);
+  animation: nodePulse 2s infinite ease-in-out;
+}
+
+/* Locked node — stone grey */
+.lesson-node.locked .node-circle {
+  background: linear-gradient(145deg, #ccc6ba 0%, #aea89e 50%, #928c82 100%);
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, 0.14),
+    inset 0 -5px 0 rgba(0, 0, 0, 0.14),
+    inset 0 2px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* Star on completed node */
+.node-star {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(145deg, #ffe44d, #ffc800);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  box-shadow: 0 3px 8px rgba(255, 200, 0, 0.5), inset 0 -2px 0 rgba(0,0,0,0.1);
+  animation: starPop 400ms var(--ease-bounce);
+  border: 2.5px solid #fff;
+}
+
+.node-label {
+  text-align: center;
+  max-width: 110px;
+}
+
+.node-label-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #2c1810;
+  line-height: 1.2;
+}
+
+.node-label-sub {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+/* Star rating row under completed lessons */
+.node-stars {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+}
+
+.node-stars span {
+  font-size: 14px;
+  color: #ffc800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* ─── Decorative elements ───────────────────────────────────────────────── */
+.book-deco {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.55;
+  font-size: 24px;
+  z-index: 0;
+}
+
+.book-deco.deco-cloud {
+  opacity: 0.3;
+  font-size: 32px;
+  color: #a8d4f0;
+}
+
+.book-deco.deco-math {
+  font-weight: 900;
+  font-size: 28px;
+}
+
+.book-deco.deco-float {
+  animation: floaty 4s ease-in-out infinite;
+}
+
+/* ─── Navigation tabs bar (right side of open notebook) ─────────────────── */
+.nav-tabs-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 0;
+  flex-shrink: 0;
+  width: 68px;
+  align-items: flex-start;
+}
+
+.nav-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 6px 8px;
+  border: none;
+  border-radius: 0 16px 16px 0;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 800;
+  width: 64px;
+  transition:
+    transform 160ms var(--ease-bounce),
+    box-shadow 160ms var(--ease-out),
+    filter 160ms var(--ease-out);
+  box-shadow: 3px 2px 8px rgba(0, 0, 0, 0.18);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.nav-tab:hover {
+  transform: translateX(5px);
+  box-shadow: 6px 3px 14px rgba(0, 0, 0, 0.25);
+  filter: brightness(1.1);
+}
+
+.nav-tab:active {
+  transform: scale(0.95) translateX(2px);
+  transition-duration: 80ms;
+}
+
+.nav-tab.active {
+  transform: translateX(8px);
+  box-shadow: 8px 4px 16px rgba(0, 0, 0, 0.28);
+  filter: brightness(1.15);
+}
+
+.nav-tab.active:hover {
+  transform: translateX(10px);
+}
+
+.nav-tab-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.nav-tab-text {
+  font-size: 9px;
+  line-height: 1.1;
+  letter-spacing: 0.3px;
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: 900;
+}
+
+/* Individual tab colors */
+.nav-tab[data-page="lessons"]   { background: var(--tab-lessons); }
+.nav-tab[data-page="practice"]  { background: var(--tab-practice); }
+.nav-tab[data-page="tracking"]  { background: var(--tab-tracking); }
+.nav-tab[data-page="profile"]   { background: var(--tab-profile); }
+.nav-tab[data-action="open-settings"] { background: var(--tab-settings); }
+.nav-tab-close                  { background: var(--tab-close); color: #fff; }
+
+.nav-tab-close:hover { filter: brightness(1.15); }
+
+/* ─── Book navigation arrows ────────────────────────────────────────────── */
+.book-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 6px 0;
+  width: 100%;
+}
+
+.book-nav-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(145deg, #ffe8a0, #f5d060);
+  box-shadow: 0 4px 12px rgba(245, 208, 96, 0.4), inset 0 -3px 0 rgba(0, 0, 0, 0.1);
+  transition: transform 160ms var(--ease-bounce), box-shadow 160ms var(--ease-out);
+}
+
+.book-nav-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 18px rgba(245, 208, 96, 0.5);
+}
+
+.book-nav-btn:active {
+  transform: scale(0.94);
+  transition-duration: 80ms;
+}
+
+.book-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.book-nav-info {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.book-nav-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.book-nav-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: background 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+
+.book-nav-dot.active {
+  background: #fff;
+  transform: scale(1.35);
+}
+
+/* ─── SVG path line between nodes ───────────────────────────────────────── */
+.trail-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.trail-svg path {
+  fill: none;
+  stroke: #c4bfb0;
+  stroke-width: 3;
+  stroke-dasharray: 10 8;
+  stroke-linecap: round;
+}
+
+/* ─── Treasure chest (final lesson icon) ────────────────────────────────── */
+.node-treasure .node-circle {
+  background: none;
+  box-shadow: none;
+  font-size: 42px;
+}
+
+/* ─── Colorful math numbers decoration ──────────────────────────────────── */
+.book-deco.deco-numbers {
+  font-family: "Segoe UI Variable", "Comic Sans MS", cursive;
+  font-weight: 900;
+  letter-spacing: 6px;
+  opacity: 0.7;
+}
+
+.book-deco .num-red { color: #e04545; }
+.book-deco .num-green { color: #4ec900; }
+.book-deco .num-blue { color: #3399ee; }
+.book-deco .num-purple { color: #9050dd; }
+.book-deco .num-orange { color: #f59e0b; }
+
+/* ─── Notebook page number ──────────────────────────────────────────────── */
+.book-page-num {
+  position: absolute;
+  bottom: 10px;
+  font-size: 12px;
+  color: #b0a898;
+  font-weight: 700;
+}
+
+.book-page-left .book-page-num { left: 14px; }
+.book-page-right .book-page-num { right: 14px; }
+
+/* ─── Animations for notebook ───────────────────────────────────────────── */
+@keyframes nodePulse {
+  0%, 100% { box-shadow: 0 6px 16px rgba(58, 157, 224, 0.35), 0 0 0 0 rgba(58, 157, 224, 0.3); }
+  50% { box-shadow: 0 6px 16px rgba(58, 157, 224, 0.35), 0 0 0 10px rgba(58, 157, 224, 0); }
+}
+
+@keyframes starPop {
+  0% { transform: scale(0) rotate(-45deg); }
+  60% { transform: scale(1.2) rotate(10deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* ─── Trail layout positions ────────────────────────────────────────────── */
+.trail-container {
+  position: relative;
+  flex: 1;
+  min-height: 380px;
+}
+
+.trail-node-positioned {
+  position: absolute;
+  z-index: 1;
+}
+
+/* ─── Book page: main content area (right page) ────────────────────────── */
+.book-page-main {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.book-page-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+}
+
+/* ─── Book info section (left page stats) ───────────────────────────────── */
+.book-info-section {
+  padding: 10px 0;
+}
+
+.book-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.book-info-label {
+  color: var(--muted);
+}
+
+.book-info-value {
+  color: #2c1810;
+  font-weight: 800;
+}
+
+.book-next-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #e8f7fd, #d4eef8);
+  border: 1.5px solid #66bedd;
+  font-size: 13px;
+}
+
+/* ─── Animal avatar system ──────────────────────────────────────────────── */
+.animal-avatar {
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 3px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+.animal-avatar-sm { width: 44px; height: 44px; font-size: 26px; }
+.animal-avatar-md { width: 64px; height: 64px; font-size: 40px; }
+.animal-avatar-lg { width: 88px; height: 88px; font-size: 54px; }
+
+.animal-avatar-cover {
+  border-radius: 50%;
+  width: clamp(70px, 14vw, 110px);
+  height: clamp(70px, 14vw, 110px);
+  font-size: clamp(44px, 9vw, 72px);
+  display: grid;
+  place-items: center;
+  border: 4px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), inset 0 2px 0 rgba(255,255,255,0.3);
+  overflow: hidden;
+}
+
+/* Mascot trail floater */
+.trail-mascot {
+  position: absolute;
+  font-size: 40px;
+  pointer-events: none;
+  z-index: 10;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+  animation: mascotBounce 1.4s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+@keyframes mascotBounce {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50%       { transform: translateY(-10px) rotate(5deg); }
+}
+
+/* Animal choice grid in onboarding */
+.animal-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.animal-choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px 10px;
+  border: 3px solid transparent;
+  border-radius: 18px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--text);
+  transition: transform 160ms var(--ease-bounce), border-color 160ms, box-shadow 160ms;
+  box-shadow: var(--shadow);
+  min-height: 44px;
+}
+
+.animal-choice-btn:hover {
+  transform: scale(1.08) translateY(-3px);
+}
+
+.animal-choice-btn.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(78, 201, 0, 0.3), var(--shadow);
+  transform: scale(1.05);
+}
+
+.animal-choice-name {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+}
+
+/* ─── Trail container for all 6 lessons on right page ───────────────────── */
+.trail-container-full {
+  position: relative;
+  flex: 1;
+  min-height: 100%;
+  width: 100%;
+}
+
+/* ─── Empty book page ───────────────────────────────────────────────────── */
+.book-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--muted);
+  gap: 12px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.book-empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+/* ─── Reader in book layout ─────────────────────────────────────────────── */
+.book-spread-reader {
+  grid-template-columns: 220px auto 1fr;
+}
+
+.book-page-reader-info {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 20px;
+}
+
+.book-page-reader-content {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.book-page-reader-content .reader-frame-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.book-page-reader-content .reader-frame-shell iframe {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 10px;
+  background: #fff;
+  display: block;
+}
+
+.book-spine-reader {
+  gap: 12px;
+}
+
+/* ─── Reader stage list (sidebar) ───────────────────────────────────────── */
+.reader-stages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.reader-stage-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: background 160ms;
+}
+
+.reader-stage-item.active {
+  background: linear-gradient(145deg, #e8f7fd 0%, #d4eef8 100%);
+  color: #1a6fa0;
+  font-weight: 800;
+}
+
+.reader-stage-item.done {
+  color: #3a8a20;
+}
+
+.reader-stage-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #e8e2d6;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.reader-stage-item.active .reader-stage-dot {
+  background: linear-gradient(145deg, #5cb8f0, #3a9de0);
+  color: #fff;
+}
+
+.reader-stage-item.done .reader-stage-dot {
+  background: linear-gradient(145deg, #6cd922, #4ab818);
+  color: #fff;
+}
+
+.reader-stage-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reader-stage-indicator {
+  padding: 10px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ─── CLOSED NOTEBOOK / HOME SCREEN ─────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.home-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  perspective: 1200px;
+  gap: 20px;
+  padding: 20px;
+}
+
+/* ─── Closed notebook — responsive, fills available space ───────────────── */
+.notebook-closed {
+  position: relative;
+  width: 90%;
+  max-width: 460px;
+  aspect-ratio: 3 / 4;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 400ms var(--ease-bounce), box-shadow 400ms var(--ease-out);
+}
+
+.notebook-closed:hover {
+  transform: translateY(-8px) rotateY(-3deg);
+}
+
+.notebook-closed:active {
+  transform: scale(0.97);
+  transition-duration: 100ms;
+}
+
+/* Front cover */
+.notebook-front {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #2b6ad4 0%, #1a4fa3 40%, #0e3585 100%);
+  border-radius: 8px 24px 24px 8px;
+  border: 3px solid #0a276a;
+  box-shadow:
+    0 20px 56px rgba(16, 58, 133, 0.50),
+    0 8px 20px rgba(0, 0, 0, 0.22),
+    inset 0 2px 0 rgba(255, 255, 255, 0.22),
+    inset -3px 0 10px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2.5vh, 20px);
+  padding: clamp(20px, 5vh, 50px) 30px;
+  overflow: hidden;
+  z-index: 2;
+}
+
+/* Spine edge */
+.notebook-front::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.06) 60%, transparent 100%);
+  border-radius: 8px 0 0 8px;
+}
+
+/* Page edges visible on the right */
+.notebook-pages-edge {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  right: -8px;
+  width: 10px;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      #f5f0e5 0px,
+      #f5f0e5 2px,
+      #e8e2d4 2px,
+      #e8e2d4 3px
+    );
+  border-radius: 0 4px 4px 0;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+}
+
+/* Bottom cover shadow */
+.notebook-back {
+  position: absolute;
+  inset: 5px -5px -5px 2px;
+  background: linear-gradient(160deg, #3a6aaa, #1c3f70);
+  border-radius: 8px 22px 22px 8px;
+  z-index: 0;
+}
+
+/* Cover title & decorations */
+.notebook-cover-title {
+  font-family: "Segoe UI Variable", "Comic Sans MS", cursive;
+  font-size: clamp(24px, 4vw, 38px);
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.notebook-cover-sub {
+  font-size: clamp(12px, 1.6vw, 16px);
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  text-align: center;
+}
+
+.notebook-cover-avatar {
+  width: clamp(60px, 10vw, 100px);
+  height: clamp(60px, 10vw, 100px);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffe8c2, #ffd699);
+  border: 4px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+}
+
+.notebook-cover-avatar img {
+  width: 65%;
+  height: 65%;
+}
+
+/* Decorative elements on cover */
+.notebook-cover-deco {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  z-index: 3;
+}
+
+.notebook-cover-sticker {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 6px 12px;
+  font-size: clamp(16px, 2vw, 22px);
+  backdrop-filter: blur(4px);
+}
+
+/* Cover elastic band */
+.notebook-band {
+  position: absolute;
+  right: clamp(16px, 4vw, 28px);
+  top: -8px;
+  bottom: -8px;
+  width: 14px;
+  background: linear-gradient(180deg, #e04545, #cc2a2a);
+  border-radius: 7px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 4;
+}
+
+/* (page transition animations removed) */
+
+/* (old bookmark tabs and home button removed — replaced by nav-tabs-bar) */
 
 /* ─── Split / profile / reader layouts ──────────────────────────────────── */
 .split,
@@ -672,15 +1711,32 @@ select {
 /* ─── Stats ──────────────────────────────────────────────────────────────── */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+}
+
+.stats-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 14px 10px;
+  gap: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  box-shadow: var(--shadow);
 }
 
 .stats-card strong {
   display: block;
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 900;
+  color: var(--secondary);
+  line-height: 1;
 }
+
+.stats-card .muted { font-size: 11px; }
 
 /* ─── Choice grid ────────────────────────────────────────────────────────── */
 .choice-grid {
@@ -781,6 +1837,37 @@ select {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.crop-vision-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.crop-model-select {
+  padding: 5px 8px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  background: rgba(23, 49, 59, 0.85);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 140px;
+}
+
+.crop-model-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.crop-no-vision {
+  font-size: 12px;
+  color: rgba(255, 220, 150, 0.9);
+  font-weight: 600;
+  padding: 4px 2px;
 }
 
 .crop-selection {
@@ -1448,6 +2535,7 @@ select {
 .modal {
   position: fixed;
   inset: 0;
+  z-index: 9999;
   background: rgba(10, 20, 26, 0.44);
   display: grid;
   place-items: center;
@@ -1578,11 +2666,6 @@ select {
   overflow-y: hidden;
 }
 
-/* ─── Page entrance animation ────────────────────────────────────────────── */
-.page-content > * {
-  animation: slideUp 220ms var(--ease-out) both;
-}
-
 /* ─── Keyframes ──────────────────────────────────────────────────────────── */
 @keyframes bounce {
   0%, 80%, 100% { transform: translateY(0); opacity: 0.38; }
@@ -1652,9 +2735,100 @@ select {
     grid-template-columns: 1fr;
   }
 
+  /* Nav tabs: horizontal strip on smaller screens */
+  .book-scene {
+    flex-direction: column-reverse;
+  }
+
+  .nav-tabs-bar {
+    flex-direction: row;
+    width: 100%;
+    padding: 0 4px;
+    gap: 4px;
+    overflow-x: auto;
+  }
+
+  .nav-tab {
+    border-radius: 0 0 12px 12px;
+    padding: 6px 8px 5px;
+    min-width: 0;
+    flex: 1;
+    width: auto;
+  }
+
+  .nav-tab-text {
+    font-size: 9px;
+  }
+
+  .nav-tab-icon {
+    font-size: 16px;
+  }
+
+  .nav-tab-close {
+    flex: none;
+    padding: 6px 10px 5px;
+  }
+
+  /* Book layout adjustments */
+  .book-spread,
+  .book-spread-reader {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .book-spine {
+    flex-direction: row;
+    width: 100%;
+    height: 28px;
+    padding: 0 18px;
+    gap: 10px;
+  }
+
+  .spiral-ring {
+    width: 14px;
+    height: 22px;
+  }
+
+  .book-page-left { border-radius: 10px 10px 0 0; }
+  .book-page-right { border-radius: 0 0 10px 10px; }
+
+  .book-page-reader-info {
+    min-height: auto;
+  }
+
+  .reader-stages-list {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 4px;
+  }
+
+  .reader-stage-item {
+    white-space: nowrap;
+    padding: 6px 8px;
+  }
+
   .page-content {
     overflow: visible;
     padding-right: 0;
+  }
+
+  .app-shell-notebook {
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+  }
+
+  .book-cover {
+    min-height: auto;
+  }
+
+  .home-scene {
+    min-height: auto;
+    padding: 10px 0;
+  }
+
+  .trail-container-full {
+    min-height: 500px;
   }
 }
 

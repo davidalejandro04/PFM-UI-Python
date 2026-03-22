@@ -41,6 +41,17 @@ import {
   studyDeckPrompt
 } from "./utils/prompts.mjs";
 
+const ANIMAL_AVATARS = {
+  bear:   { emoji: "🐻", bg: "linear-gradient(145deg,#8B5E3C,#6B3A1F)", name: "Oso"    },
+  fox:    { emoji: "🦊", bg: "linear-gradient(145deg,#E8700A,#C04A00)", name: "Zorro"  },
+  cat:    { emoji: "🐱", bg: "linear-gradient(145deg,#7A7A8A,#4A4A5A)", name: "Gato"   },
+  frog:   { emoji: "🐸", bg: "linear-gradient(145deg,#2D8A2D,#1A5E1A)", name: "Rana"   },
+  panda:  { emoji: "🐼", bg: "linear-gradient(145deg,#444444,#222222)", name: "Panda"  },
+  lion:   { emoji: "🦁", bg: "linear-gradient(145deg,#D4A017,#A87000)", name: "León"   },
+  rabbit: { emoji: "🐰", bg: "linear-gradient(145deg,#E8A0B0,#C87090)", name: "Conejo" },
+  koala:  { emoji: "🐨", bg: "linear-gradient(145deg,#708090,#485870)", name: "Koala"  },
+};
+
 const avatarMap = {
   tutor: "../assets/svg/tutor.svg",
   abacus: "../assets/svg/abacus.svg",
@@ -56,22 +67,40 @@ const iconMap = {
   abacus: "../assets/svg/abacus.svg"
 };
 
+// Cuadernos disponibles. Para añadir una nueva materia, agrega una entrada aquí.
+// Cada cuaderno tiene su propia sección de lecciones, progreso y tutor.
+const CUADERNOS = [
+  {
+    id: "mates",
+    label: "Mi Cuaderno\nde Mates",
+    labelHtml: "Mi Cuaderno<br>de Mates",
+    subject: "matematicas",
+    page: "lessons",
+    stickers: ["⭐", "📐", "🔢", "📏"]
+  }
+  // Próximamente: { id: "lengua", label: "Mi Cuaderno\nde Lengua", ... }
+];
+
 const pageMeta = {
+  home: {
+    title: "Mi cuaderno",
+    subtitle: "Aquí puedes aprender a tu ritmo."
+  },
   lessons: {
     title: "Lecciones",
-    subtitle: "Explora rutas visuales y activa ayuda contextual sobre texto o imagen."
+    subtitle: "Aquí puedes leer tus lecciones y pedir ayuda cuando algo no se entiende."
   },
   practice: {
-    title: "Estudio guiado",
-    subtitle: "El tutor clasifica la pregunta y arma un recorrido de concepto o ejercicio."
+    title: "Practiquemos",
+    subtitle: "Escribe una pregunta o un ejercicio y yo te ayudo a aprenderlo."
   },
   tracking: {
-    title: "Tracking",
-    subtitle: "Metricas locales del estudiante, tutorias y decisiones registradas."
+    title: "Mi progreso",
+    subtitle: "Aquí puedes ver todo lo que has aprendido."
   },
   profile: {
-    title: "Perfil",
-    subtitle: "Onboarding, progreso tipo ruta y conceptos registrados del estudiante."
+    title: "Mi perfil",
+    subtitle: "Aquí puedes ver tu progreso y tus logros."
   }
 };
 
@@ -142,10 +171,10 @@ const state = {
   profile: migrateProfile(defaultProfile),
   settings: { ...DEFAULT_SETTINGS },
   availableModels: [],
-  ollama: { ok: false, message: "Sin conexion con Ollama." },
+  ollama: { ok: false, message: "No se encontró la IA. Asegúrate de que Ollama esté en marcha." },
   machineId: "",
   dataPath: "",
-  page: "lessons",
+  page: "home",
   selectedUnit: null,
   currentLesson: null,
   stageIndex: 0,
@@ -194,6 +223,7 @@ const state = {
     text: ""
   },
   deleteProfileConfirm: false,
+  bookPage: 0,
   lessonUi: {
     scroll: { x: 0, y: 0 },
     contextMenu: { open: false, x: 20, y: 20 },
@@ -205,8 +235,8 @@ const state = {
   },
   loadingPanel: {
     open: true,
-    title: "Preparando TutorMate",
-    detail: "Un momento. Estoy acomodando tus lecciones y preparando el tutor local.",
+    title: "Preparando tu cuaderno",
+    detail: "Un momento... Estoy preparando todo para ti.",
     cancelable: false,
     requestId: ""
   }
@@ -468,7 +498,7 @@ function renderExplanationCards(cards = []) {
 function inferenceReadiness(settings = state.settings) {
   return {
     ready: Boolean(settings.currentModel),
-    reason: settings.currentModel ? "" : "Activa tu tutor local desde Configuracion LLM."
+    reason: settings.currentModel ? "" : "Todavía no hay un modelo de IA activo. Ve a Ajustes para configurarlo."
   };
 }
 
@@ -490,8 +520,8 @@ function cloneSettings(source = state.settingsDraft || state.settings) {
 function openLoadingPanel({ title, detail, cancelable = false, requestId = "" }) {
   state.loadingPanel = {
     open: true,
-    title: title || "Preparando tutor local",
-    detail: detail || "Estoy preparando tu tutor local.",
+    title: title || "Preparando tu cuaderno",
+    detail: detail || "Un momento, casi listo...",
     cancelable,
     requestId
   };
@@ -523,8 +553,8 @@ function finishRequest(requestId = "") {
 
 async function bootstrap() {
   openLoadingPanel({
-    title: "Preparando TutorMate",
-    detail: "Estoy revisando tus lecciones y preparando el tutor local."
+    title: "Preparando tu cuaderno",
+    detail: "Un momento... Estoy preparando todo para ti."
   });
 
   const payload = await window.bridge.bootstrap();
@@ -574,6 +604,17 @@ function currentSuggestion() {
   return firstUnseen(state.lessons, currentCompletedSet());
 }
 
+function renderAnimalAvatar(animalId, size = "md") {
+  const animal = ANIMAL_AVATARS[animalId] || ANIMAL_AVATARS.bear;
+  return `<div class="animal-avatar animal-avatar-${size}" style="background:${animal.bg};" role="img" aria-label="${animal.name}">${animal.emoji}</div>`;
+}
+
+function getProfileAnimal() {
+  return state.profile?.avatar && ANIMAL_AVATARS[state.profile.avatar]
+    ? state.profile.avatar
+    : "bear";
+}
+
 function currentModelInfo() {
   return state.availableModels.find((item) => item.name === state.settings.currentModel) || null;
 }
@@ -590,6 +631,16 @@ function currentModelSupportsVision() {
     .toLowerCase();
 
   return VISION_MODEL_PATTERNS.some((pattern) => haystack.includes(pattern));
+}
+
+function visionModels() {
+  return state.availableModels.filter((m) => {
+    const haystack = [m.name, m.details?.family, ...(m.details?.families || [])]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return VISION_MODEL_PATTERNS.some((p) => haystack.includes(p));
+  });
 }
 
 function resetLessonAssistState() {
@@ -643,10 +694,25 @@ function renderLessonOverlay() {
     `);
   }
 
-  if (state.lessonUi.cropAction.open && state.lessonUi.cropRect && currentModelSupportsVision()) {
+  if (state.lessonUi.cropAction.open && state.lessonUi.cropRect) {
+    const vms = visionModels();
+    const selectedVisionModel = state.lessonUi.cropAction.visionModel || vms[0]?.name || "";
+    const modelOptions = vms.map((m) =>
+      `<option value="${m.name}" ${m.name === selectedVisionModel ? "selected" : ""}>${m.name}</option>`
+    ).join("");
+
     parts.push(`
       <div class="lesson-floating-menu" style="left:${state.lessonUi.cropAction.x}px;top:${state.lessonUi.cropAction.y}px;">
-        <button class="btn primary" data-action="ask-image-selection">Que es esto?</button>
+        ${vms.length > 0 ? `
+          <div class="crop-vision-row">
+            <button class="btn primary" data-action="ask-image-selection">¿Qué es esto?</button>
+            <select class="crop-model-select" data-action="vision-model-change">
+              ${modelOptions}
+            </select>
+          </div>
+        ` : `
+          <span class="crop-no-vision">Sin modelo con visión disponible</span>
+        `}
         <button class="btn secondary" data-action="clear-crop">Limpiar</button>
       </div>
     `);
@@ -845,7 +911,7 @@ function renderStudentPanel() {
     <div class="student-panel ${compact ? "compact" : ""}">
       <div class="student-panel-brand">
         <div class="student-panel-brand-row">
-          <strong>${compact ? "TM" : "TutorMate"}</strong>
+          <strong>${compact ? "MC" : "Mi cuaderno"}</strong>
           <button class="student-panel-compact" data-action="toggle-panel-compact" title="${compact ? "Expandir panel" : "Compactar panel"}">${compact ? "⇢" : "⇠"}</button>
         </div>
         ${compact ? "" : `<span class="muted">${escapeHtml(summary.displayName)}</span>`}
@@ -857,11 +923,12 @@ function renderStudentPanel() {
       ${state.studentPanel.navigationOpen
         ? `
           <div class="student-panel-body">
+            ${renderNavButton("home", "🏠 Inicio")}
             ${renderNavButton("lessons", "📚 Lecciones")}
             ${renderNavButton("practice", "🧠 Estudio")}
-            ${renderNavButton("tracking", "📈 Tracking")}
+            ${renderNavButton("tracking", "📈 Mi progreso")}
             ${renderNavButton("profile", "🙂 Perfil")}
-            <button class="nav-btn settings-entry" data-action="open-settings" title="Configuracion LLM">${compact ? "⚙️" : "⚙️ Configuracion LLM"}</button>
+            <button class="nav-btn settings-entry" data-action="open-settings" title="Ajustes">${compact ? "⚙️" : "⚙️ Ajustes"}</button>
           </div>
         `
         : ""}
@@ -1008,6 +1075,8 @@ function render() {
   wireLessonFrame();
   syncLessonUi();
   enhanceMath(document.querySelector(".page-content"));
+  enhanceMath(document.querySelector(".book-page-main"));
+  enhanceMath(document.querySelector(".book-page-reader-content"));
   enhanceMath(document.querySelector(".chat-feed"));
   enhanceMath(document.querySelector(".practice-session"));
   enhanceMath(modalRoot);
@@ -1022,26 +1091,160 @@ function scrollPendingTarget() {
 }
 
 function renderShell() {
-  const meta = pageMeta[state.page];
+  const isClosed = state.page === "home";
+
+  if (isClosed) {
+    return renderClosedNotebook();
+  }
+
+  return renderOpenNotebook();
+}
+
+function renderClosedNotebook() {
+  const summary = currentSummary();
+  const completed = currentCompletedSet();
+  const ratio = completionRatio(state.lessons, completed);
+  const profileName = state.profile.name || "Estudiante";
+  const concepts = knownConcepts(state.profile);
 
   return `
-    <div class="app-shell ${state.studentPanel.compact ? "compact-panel" : ""}">
-      ${renderStudentPanel()}
-      <main class="main-card">
-        <header class="header">
-          <div>
-            <h2>${meta.title}</h2>
-            <p class="muted">${meta.subtitle}</p>
+    <div class="app-shell-notebook">
+      <div class="home-scene">
+        <button class="notebook-closed" data-action="nav" data-page="lessons">
+          <div class="notebook-back"></div>
+          <div class="notebook-pages-edge"></div>
+          <div class="notebook-front">
+            <div class="notebook-cover-avatar">
+              <div class="animal-avatar-cover" style="background:${ANIMAL_AVATARS[getProfileAnimal()]?.bg || ANIMAL_AVATARS.bear.bg};">${ANIMAL_AVATARS[getProfileAnimal()]?.emoji || "🐻"}</div>
+            </div>
+            <div class="notebook-cover-title">${CUADERNOS[0].labelHtml}</div>
+            <div class="notebook-cover-sub">${escapeHtml(profileName)}</div>
+            <div class="notebook-cover-sub" style="opacity:0.7;font-size:13px;">${ratio.done}/${ratio.total} lecciones &middot; ${concepts.length} concepto${concepts.length !== 1 ? "s" : ""} &middot; ${summary.xp} XP</div>
+            <div class="notebook-band"></div>
+            <span class="notebook-cover-deco notebook-cover-sticker" style="position:absolute;top:16px;left:34px;">⭐</span>
+            <span class="notebook-cover-deco notebook-cover-sticker" style="position:absolute;bottom:20px;right:40px;">📐</span>
+            <span class="notebook-cover-deco notebook-cover-sticker" style="position:absolute;top:20px;right:44px;">🔢</span>
+            <span class="notebook-cover-deco notebook-cover-sticker" style="position:absolute;bottom:60px;left:36px;">📏</span>
           </div>
-        </header>
-        <section class="page-content">
-          ${state.page === "lessons" ? renderLessonsPage() : ""}
-          ${state.page === "practice" ? renderPracticePage() : ""}
-          ${state.page === "tracking" ? renderTrackingPage() : ""}
-          ${state.page === "profile" ? renderProfilePage() : ""}
-        </section>
-      </main>
+        </button>
+        <p style="color:var(--muted);font-size:14px;font-weight:600;">¡Toca el cuaderno para empezar!</p>
+      </div>
     </div>
+  `;
+}
+
+function renderOpenNotebook() {
+  const isReading = state.page === "lessons" && state.currentLesson;
+
+  const navTabs = [
+    { page: "lessons", icon: "📚", label: "Lecciones" },
+    { page: "practice", icon: "🧠", label: "Estudio" },
+    { page: "tracking", icon: "📊", label: "Progreso" },
+    { page: "profile", icon: "👤", label: "Perfil" }
+  ];
+
+  return `
+    <div class="app-shell-notebook">
+      <div class="book-scene">
+        <!-- Navigation sidebar -->
+        <nav class="nav-tabs-bar">
+          ${navTabs.map((tab) => `
+            <button class="nav-tab ${state.page === tab.page ? "active" : ""}" data-action="nav" data-page="${tab.page}">
+              <span class="nav-tab-icon">${tab.icon}</span>
+              <span class="nav-tab-text">${tab.label}</span>
+            </button>
+          `).join("")}
+          <button class="nav-tab" data-action="open-settings">
+            <span class="nav-tab-icon">⚙️</span>
+            <span class="nav-tab-text">Config</span>
+          </button>
+          <div style="flex:1;"></div>
+          <button class="nav-tab nav-tab-close" data-action="nav" data-page="home">
+            <span class="nav-tab-icon">📕</span>
+            <span class="nav-tab-text">Cerrar</span>
+          </button>
+        </nav>
+
+        <div class="book-body">
+          <div class="book-cover">
+            <div class="book-spread ${isReading ? "book-spread-reader" : ""}">
+              ${isReading ? `
+              <!-- Left page: lesson info -->
+              <div class="book-page book-page-left">
+                ${renderReaderLeftPage()}
+              </div>
+
+              <!-- Spine -->
+              <div class="book-spine book-spine-reader">
+                ${Array.from({ length: 14 }, () => `<div class="spiral-ring"></div>`).join("")}
+              </div>
+              ` : ""}
+
+              <!-- Right page: main content -->
+              <div class="book-page book-page-right ${isReading ? "book-page-reader-content" : "book-page-main"}">
+                ${isReading ? renderReaderRightPage() : renderMainContent()}
+              </div>
+            </div>
+          </div>
+
+          ${state.page === "lessons" && !isReading ? renderBookNavFooter() : ""}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderInfoLeftPage(meta, summary) {
+  const completed = currentCompletedSet();
+  const ratio = completionRatio(state.lessons, completed);
+  const next = currentSuggestion();
+  const profileName = state.profile.name || "Estudiante";
+
+  return `
+    <div class="book-header">
+      <div class="book-avatar">
+        <img src="${avatarMap.tutor}" alt="" />
+      </div>
+      <div>
+        <h2 class="book-title" style="font-size:22px;">${escapeHtml(profileName)}</h2>
+        <p class="book-subtitle">Nivel ${summary.level} &middot; ${summary.xp} XP</p>
+      </div>
+    </div>
+
+    <div class="book-info-section">
+      <div class="book-info-row">
+        <span class="book-info-label">Lecciones</span>
+        <span class="book-info-value">${ratio.done}/${ratio.total}</span>
+      </div>
+      <div class="progress-bar" style="margin:4px 0 10px;"><span style="width:${ratio.total ? (ratio.done / ratio.total) * 100 : 0}%"></span></div>
+
+      <div class="book-info-row">
+        <span class="book-info-label">Meta diaria</span>
+        <span class="book-info-value">${summary.dailyGoalProgress}/${summary.dailyGoal} XP</span>
+      </div>
+      <div class="progress-bar" style="margin:4px 0 10px;"><span style="width:${summary.dailyGoal ? (summary.dailyGoalProgress / summary.dailyGoal) * 100 : 0}%"></span></div>
+    </div>
+
+    ${next ? `
+      <div class="book-next-hint">
+        <span style="font-size:18px;">✨</span>
+        <div>
+          <div style="font-weight:800;font-size:13px;color:#2c1810;">Siguiente</div>
+          <div style="font-size:12px;color:var(--muted);">${escapeHtml(shortTitle(next.title))}</div>
+        </div>
+      </div>
+    ` : `
+      <div class="book-next-hint" style="background:linear-gradient(145deg,#edf9da,#ddf0be);border-color:#88c84e;">
+        <span style="font-size:18px;">🏆</span>
+        <div style="font-weight:800;font-size:13px;color:#3a8a20;">Ruta completa</div>
+      </div>
+    `}
+
+    <div style="flex:1;"></div>
+
+    <span class="book-deco deco-cloud deco-float" style="bottom:30px;right:12px;">☁️</span>
+    <span class="book-deco deco-float" style="bottom:10px;left:10px;font-size:20px;">📐</span>
+    <span class="book-page-num">📖</span>
   `;
 }
 
@@ -1057,134 +1260,210 @@ function renderNavButton(key, label) {
   `;
 }
 
-function renderLessonsPage() {
-  if (state.currentLesson) {
-    return renderLessonReader();
-  }
+// Lessons page is now handled directly by renderOpenNotebook() — no standalone function needed
+function renderLessonsPage() { return ""; }
+function renderHomePage() { return ""; }
 
-  const completed = currentCompletedSet();
-  const ratio = completionRatio(state.lessons, completed);
-  const lessons = state.lessons.find((item) => item.unit === state.selectedUnit)?.lessons || [];
-  const unitRatio = state.selectedUnit
-    ? unitProgress(state.lessons, state.selectedUnit, completed)
-    : { done: 0, total: 0 };
-  const next = currentSuggestion();
+function shortTitle(title = "") {
+  const s = String(title);
+  if (s.length <= 20) return s;
+  return s.slice(0, 18) + "…";
+}
+
+/* ── Modular page renderers for inside the open book ─────────────────── */
+
+function renderMainContent() {
+  if (state.page === "lessons") return renderLessonsContent();
+  if (state.page === "practice") return `<div class="book-page-scroll">${renderPracticePage()}</div>`;
+  if (state.page === "tracking") return `<div class="book-page-scroll">${renderTrackingPage()}</div>`;
+  if (state.page === "profile") return `<div class="book-page-scroll">${renderProfilePage()}</div>`;
+  return "";
+}
+
+function renderBookNavFooter() {
+  const allLessons = state.lessons.flatMap((unit) =>
+    (unit.lessons || []).map((lesson) => ({ ...lesson, unit: unit.unit }))
+  );
+  const LESSONS_PER_SPREAD = 6;
+  const totalPages = Math.max(1, Math.ceil(allLessons.length / LESSONS_PER_SPREAD));
+
+  const dots = Array.from({ length: totalPages }, (_, i) =>
+    `<div class="book-nav-dot ${i === state.bookPage ? "active" : ""}"></div>`
+  ).join("");
 
   return `
-    <div class="stack">
-      <section class="hero-card">
-        <div class="row">
-          <div class="hero-copy">
-            <h2>Rutas de aprendizaje</h2>
-            <p class="muted">Las lecciones viven en el JSON local y la ayuda contextual aparece como tarjetas flotantes sobre la lectura.</p>
-          </div>
-          <span class="tag">${ratio.done}/${ratio.total} completadas</span>
-        </div>
-        <div class="progress-bar"><span style="width:${ratio.total ? (ratio.done / ratio.total) * 100 : 0}%"></span></div>
-      </section>
-      <section class="lesson-browser">
-        <div class="card stack">
-          <div class="card-head">
-            <div>
-              <h3 style="margin:0;">Unidades</h3>
-              <p class="muted">Selecciona una ruta para ver sus lecciones sin salir de esta pantalla.</p>
-            </div>
-            <span class="tag">${state.lessons.length} rutas</span>
-          </div>
-          <div class="unit-list">
-            ${state.lessons.map((unit) => {
-              const progress = unitProgress(state.lessons, unit.unit, completed);
-              return `
-                <button class="unit-card ${unit.unit === state.selectedUnit ? "active" : ""}" data-action="select-unit" data-unit="${escapeHtml(unit.unit)}">
-                  <div class="card-head">
-                    <span class="tag">${progress.done}/${progress.total}</span>
-                    <div class="icon-circle"><img src="${lessonIcon(unit.unit)}" alt="" /></div>
-                  </div>
-                  <div class="card-title">${escapeHtml(unit.unit)}</div>
-                  <p class="muted">Abre esta ruta para listar y navegar sus lecciones.</p>
-                </button>
-              `;
-            }).join("")}
-          </div>
-        </div>
-        <section class="card stack" id="selected-unit-panel">
-          <div class="card-head">
-            <div>
-              <h3 style="margin:0;">${escapeHtml(state.selectedUnit || "Selecciona una unidad")}</h3>
-              <p class="muted">Siguiente sugerencia: ${next ? `${escapeHtml(next.title)} (${escapeHtml(next.unit)})` : "Ruta completa"}</p>
-            </div>
-            <span class="tag">${unitRatio.done}/${unitRatio.total} en esta unidad</span>
-          </div>
-          <div class="lesson-grid">
-            ${lessons.map((lesson) => {
-              const key = `${state.selectedUnit}::${lesson.title}`;
-              const status = completed.has(key)
-                ? "done"
-                : next && next.unit === state.selectedUnit && next.title === lesson.title
-                  ? "current"
-                  : "";
-              return `
-                <button class="lesson-card ${status}" data-action="open-lesson" data-unit="${escapeHtml(state.selectedUnit)}" data-lesson="${escapeHtml(lesson.title)}">
-                  <div class="card-head">
-                    <span class="tag">${status === "done" ? "Completada" : status === "current" ? "Siguiente" : "Leccion"}</span>
-                    <div class="icon-circle"><img src="${lessonIcon(lesson.title)}" alt="" /></div>
-                  </div>
-                  <div class="card-title">${escapeHtml(lesson.title)}</div>
-                  <p class="muted">${escapeHtml(lesson.description || "Leccion disponible en la ruta.")}</p>
-                  <p class="muted">${(lesson.stages || []).length} etapas</p>
-                </button>
-              `;
-            }).join("") || `<div class="empty-state">Esta unidad aun no tiene lecciones cargadas.</div>`}
-          </div>
-        </section>
-      </section>
+    <nav class="book-nav">
+      <button class="book-nav-btn" data-action="book-prev" ${state.bookPage === 0 ? "disabled" : ""}>◀</button>
+      <div class="book-nav-dots">${dots}</div>
+      <button class="book-nav-btn" data-action="book-next" ${state.bookPage >= totalPages - 1 ? "disabled" : ""}>▶</button>
+    </nav>
+  `;
+}
+
+function renderLessonsContent() {
+  const completed = currentCompletedSet();
+  const next = currentSuggestion();
+
+  if (!state.selectedUnit && state.lessons.length > 0) {
+    state.selectedUnit = state.lessons[0].unit;
+  }
+
+  const allLessons = state.lessons.flatMap((unit) =>
+    (unit.lessons || []).map((lesson) => ({ ...lesson, unit: unit.unit }))
+  );
+
+  const LESSONS_PER_SPREAD = 6;
+  const totalPages = Math.max(1, Math.ceil(allLessons.length / LESSONS_PER_SPREAD));
+  if (state.bookPage >= totalPages) state.bookPage = totalPages - 1;
+  if (state.bookPage < 0) state.bookPage = 0;
+
+  const spreadLessons = allLessons.slice(
+    state.bookPage * LESSONS_PER_SPREAD,
+    (state.bookPage + 1) * LESSONS_PER_SPREAD
+  );
+
+  const decos = [
+    { cls: "deco-cloud deco-float", style: "top:10px;right:20px;", ch: "☁️" },
+    { cls: "deco-numbers", style: "top:14px;left:16px;font-size:22px;", ch: `<span class="num-red">1</span> <span class="num-green">2</span> <span class="num-blue">3</span>` },
+    { cls: "deco-float", style: "bottom:20px;right:16px;", ch: "📐" },
+    { cls: "deco-float", style: "bottom:14px;left:18px;font-size:18px;", ch: `<span class="num-purple">+</span> <span class="num-orange">×</span> <span class="num-red">÷</span>` }
+  ];
+
+  if (spreadLessons.length === 0) {
+    return `
+      <div class="book-empty">
+        <div class="book-empty-icon">📚</div>
+        <p>No hay lecciones cargadas todavia.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="trail-container-full">
+      ${renderLessonTrail(spreadLessons, completed, next)}
+      ${decos.map((d) => `<span class="book-deco ${d.cls}" style="${d.style}">${d.ch}</span>`).join("")}
     </div>
   `;
 }
 
-function renderLessonReader() {
+function renderLessonTrail(lessons, completed, next) {
+  const LESSONS_PER_SPREAD = 6;
+  const animal = ANIMAL_AVATARS[getProfileAnimal()] || ANIMAL_AVATARS.bear;
+
+  // Zigzag positions across the full page
+  const nodePositions = [
+    { x: 12, y: 6 },
+    { x: 56, y: 20 },
+    { x: 14, y: 37 },
+    { x: 60, y: 52 },
+    { x: 12, y: 68 },
+    { x: 58, y: 83 },
+  ];
+
+  // Build SVG dashed path
+  let svgPath = "";
+  if (lessons.length > 1) {
+    const pts = lessons.map((_, i) => nodePositions[i] || nodePositions[0]);
+    svgPath = `M ${pts[0].x + 7} ${pts[0].y + 7}`;
+    for (let i = 1; i < pts.length; i++) {
+      const cpx = (pts[i - 1].x + pts[i].x) / 2 + 7;
+      const cpy = (pts[i - 1].y + pts[i].y) / 2 + 7 + (i % 2 === 0 ? -6 : 6);
+      svgPath += ` Q ${cpx} ${cpy} ${pts[i].x + 7} ${pts[i].y + 7}`;
+    }
+  }
+
+  // Find current node index for mascot placement
+  const currentIdx = lessons.findIndex((lesson) =>
+    next && next.unit === lesson.unit && next.title === lesson.title
+  );
+  const mascotIdx = currentIdx >= 0 ? currentIdx : (lessons.findIndex((l) => !completed.has(`${l.unit}::${l.title}`)));
+
+  return `
+    ${svgPath ? `<svg class="trail-svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${svgPath}" stroke-dasharray="3 4" /></svg>` : ""}
+    ${lessons.map((lesson, i) => {
+      const key = `${lesson.unit}::${lesson.title}`;
+      const isDone = completed.has(key);
+      const isCurrent = next && next.unit === lesson.unit && next.title === lesson.title;
+      const status = isDone ? "done" : isCurrent ? "current" : "locked";
+      const globalIdx = state.bookPage * LESSONS_PER_SPREAD + i;
+      const pos = nodePositions[i] || nodePositions[0];
+      const showMascot = i === mascotIdx;
+
+      return `
+        <div class="trail-node-positioned" style="top:${pos.y}%;left:${pos.x}%;">
+          ${showMascot ? `<div class="trail-mascot" aria-hidden="true">${animal.emoji}</div>` : ""}
+          <button class="lesson-node ${status}" data-action="open-lesson" data-unit="${escapeHtml(lesson.unit)}" data-lesson="${escapeHtml(lesson.title)}" aria-label="Lección ${globalIdx + 1}: ${escapeHtml(lesson.title)} — ${status === 'done' ? 'completada' : status === 'current' ? 'siguiente' : 'bloqueada'}">
+            <div class="node-circle">
+              ${isDone ? `<span class="node-star" aria-hidden="true">⭐</span>` : ""}
+              <span aria-hidden="true">${globalIdx + 1}</span>
+            </div>
+            <div class="node-label">
+              <div class="node-label-title">${escapeHtml(shortTitle(lesson.title))}</div>
+            </div>
+            ${isDone ? `<div class="node-stars" aria-hidden="true"><span>⭐</span><span>⭐</span><span>⭐</span></div>` : ""}
+          </button>
+        </div>
+      `;
+    }).join("")}
+  `;
+}
+
+function renderReaderLeftPage() {
+  const lesson = state.currentLesson;
+  const stages = lesson.stages || [];
+
+  return `
+    <div class="book-header">
+      ${renderAnimalAvatar(getProfileAnimal(), "sm")}
+      <div>
+        <h2 class="book-title" style="font-size:18px;">${escapeHtml(lesson.title)}</h2>
+        <p class="book-subtitle">${escapeHtml(state.selectedUnit || "")}</p>
+      </div>
+    </div>
+    <div class="reader-stage-indicator">
+      <div class="tag">Etapa ${state.stageIndex + 1} de ${stages.length}</div>
+      <div class="progress-bar" style="margin-top:10px;"><span style="width:${((state.stageIndex + 1) / stages.length) * 100}%"></span></div>
+    </div>
+    <div class="reader-stages-list">
+      ${stages.map((s, i) => `
+        <div class="reader-stage-item ${i === state.stageIndex ? "active" : ""} ${i < state.stageIndex ? "done" : ""}">
+          <span class="reader-stage-dot">${i < state.stageIndex ? "✓" : i + 1}</span>
+          <span class="reader-stage-name">${escapeHtml(s.title || `Etapa ${i + 1}`)}</span>
+        </div>
+      `).join("")}
+    </div>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px;">
+      <button class="btn secondary" data-action="close-lesson" style="flex:1;">◀ Volver</button>
+    </div>
+  `;
+}
+
+function renderReaderRightPage() {
   const lesson = state.currentLesson;
   const stages = lesson.stages || [];
   const stage = stages[state.stageIndex] || { html: "<p>Sin contenido.</p>" };
   const iframeHtml = wrapStageHtml(stage.html, lesson.title, state.stageIndex + 1, stages.length);
 
   return `
-    <div class="reader-panel reader-panel-single">
-      <section class="reader-card">
-        <div class="stack reader-stage">
-          <div class="card-head">
-            <div>
-              <div class="tag">Etapa ${state.stageIndex + 1}/${stages.length}</div>
-              <h3 style="margin:10px 0 4px;">${escapeHtml(lesson.title)}</h3>
-              <p class="muted">${escapeHtml(state.selectedUnit || "")}</p>
-            </div>
-            <div class="row">
-              <button class="btn secondary" data-action="close-lesson">Volver</button>
-            </div>
-          </div>
-          <div class="progress-bar"><span style="width:${((state.stageIndex + 1) / stages.length) * 100}%"></span></div>
-          <div class="reader-frame-shell" id="lesson-frame-shell">
-            ${currentModelSupportsVision()
-              ? `
-                <div class="lesson-tool-dock">
-                  <button class="icon-action-btn ${state.lessonUi.cropMode ? "active" : ""}" data-action="toggle-crop-mode" title="crop image" aria-label="crop image">✂️</button>
-                </div>
-              `
-              : ""}
-            <iframe id="lesson-frame" title="Leccion" data-srcdoc="${encodeURIComponent(iframeHtml)}"></iframe>
-            <div class="lesson-overlay" id="lesson-overlay">${renderLessonOverlay()}</div>
-          </div>
-          <div class="row">
-            <button class="btn secondary" data-action="lesson-prev" ${state.stageIndex === 0 ? "disabled" : ""}>Anterior</button>
-            ${state.stageIndex < stages.length - 1
-              ? `<button class="btn primary" data-action="lesson-next">Siguiente</button>`
-              : `<button class="btn primary" data-action="lesson-finish">Completar leccion</button>`}
-          </div>
-        </div>
-      </section>
+    <div class="reader-frame-shell" id="lesson-frame-shell">
+      <div class="lesson-tool-dock">
+        <button class="icon-action-btn ${state.lessonUi.cropMode ? "active" : ""}" data-action="toggle-crop-mode" title="Recortar imagen" aria-label="Recortar imagen">✂️</button>
+      </div>
+      <iframe id="lesson-frame" title="Leccion" data-srcdoc="${encodeURIComponent(iframeHtml)}"></iframe>
+      <div class="lesson-overlay" id="lesson-overlay">${renderLessonOverlay()}</div>
+    </div>
+    <div class="row" style="margin-top:8px;justify-content:space-between;">
+      <button class="book-nav-btn" data-action="lesson-prev" ${state.stageIndex === 0 ? "disabled" : ""} style="width:40px;height:40px;font-size:16px;">◀</button>
+      ${state.stageIndex < stages.length - 1
+        ? `<button class="btn primary" data-action="lesson-next" style="flex:1;margin:0 8px;">Siguiente etapa</button>`
+        : `<button class="btn primary" data-action="lesson-finish" style="flex:1;margin:0 8px;">Completar leccion 🏆</button>`}
+      <button class="book-nav-btn" data-action="lesson-next" ${state.stageIndex >= stages.length - 1 ? "disabled" : ""} style="width:40px;height:40px;font-size:16px;">▶</button>
     </div>
   `;
 }
+
+/* Old functions kept as stubs since renderOpenNotebook handles routing */
+function renderLessonReader() { return ""; }
 
 function renderSessionSummary() {
   if (!state.practiceSession) {
@@ -1456,24 +1735,25 @@ function renderPracticePage() {
 
   return `
     <div class="stack">
-      <section class="hero-card">
-        <div class="row">
+      <section class="hero-card" style="overflow:hidden;padding:0;">
+        <div class="page-section-head orange">
+          <span style="font-size:28px;">🧠</span>
           <div>
-            <h2>Estudio guiado</h2>
-            <p class="muted">Escribe una duda o un ejercicio y el sistema generara directamente tarjetas o un problema guiado, sin formato de conversacion.</p>
+            <div style="font-size:18px;">Practiquemos</div>
+            <div style="font-size:12px;opacity:0.85;">Escribe una pregunta o un ejercicio y yo te ayudo.</div>
           </div>
         </div>
-        <p class="muted">${escapeHtml(readiness.reason || "")}</p>
+        ${readiness.reason ? `<p class="muted" style="padding:8px 20px;margin:0;">${escapeHtml(readiness.reason)}</p>` : ""}
       </section>
       <section class="card stack">
         <div>
-          <h3 style="margin:0 0 6px;">Nueva interaccion</h3>
-          <p class="muted">La pregunta no se muestra como chat. Solo dispara el recorrido de estudio correspondiente.</p>
+          <h3 style="margin:0 0 6px;">¿Qué quieres aprender hoy?</h3>
+          <p class="muted">Escribe tu duda o el ejercicio que quieres practicar.</p>
         </div>
         ${!readiness.ready ? `<div class="empty-state">${escapeHtml(readiness.reason)}</div>` : ""}
         <form class="composer" data-form="chat">
-          <textarea id="chat-input" name="question" placeholder="Escribe una duda de matematicas, un concepto o un ejercicio..." ${(state.isThinking || !readiness.ready) ? "disabled" : ""}></textarea>
-          <button class="btn primary" type="submit" ${(state.isThinking || !readiness.ready) ? "disabled" : ""}>Generar</button>
+          <textarea id="chat-input" name="question" placeholder="Escribe tu pregunta aquí..." ${(state.isThinking || !readiness.ready) ? "disabled" : ""}></textarea>
+          <button class="btn primary" type="submit" ${(state.isThinking || !readiness.ready) ? "disabled" : ""}>¡Vamos!</button>
         </form>
         ${state.isThinking ? `<div class="typing"><span></span><span></span><span></span></div>` : ""}
       </section>
@@ -1484,8 +1764,8 @@ function renderPracticePage() {
           ${renderKnownConceptChips()}
         </div>
         <div class="stack">
-          <strong>Ideas rapidas</strong>
-          <p class="muted">Cada ejemplo dispara directamente tarjetas o un problema guiado, sin abrir una conversacion visible.</p>
+          <strong>Prueba con estas ideas</strong>
+          <p class="muted">Pulsa cualquier idea para empezar a practicar.</p>
           <div class="choice-grid">
           ${[
             "Explicame el concepto de fracciones equivalentes",
@@ -1524,7 +1804,7 @@ function renderActionGraph(decisionMap) {
   const totalDecisions = Object.values(decisionMap).reduce((sum, v) => sum + v, 0);
 
   if (!totalDecisions) {
-    return `<div class="empty-state">Aun no hay acciones registradas. Usa el modo agente para generar datos.</div>`;
+    return `<div class="empty-state">¡Todavía no hay datos! Empieza a practicar y aquí verás tus estadísticas.</div>`;
   }
 
   // Group by category
@@ -1583,8 +1863,8 @@ function renderStudentAnalysisModal() {
         <div class="modal-header">
           <div>
             <span class="tag">BETA</span>
-            <h3 style="margin:8px 0 4px;">Análisis de estudiante</h3>
-            <p class="muted">Generado con IA a partir de las interacciones registradas. No es un diagnostico clinico.</p>
+            <h3 style="margin:8px 0 4px;">Cómo vas aprendiendo</h3>
+            <p class="muted">Generado con IA a partir de tus sesiones de práctica.</p>
           </div>
           <button class="ghost-btn" data-action="close-student-analysis">Cerrar</button>
         </div>
@@ -1684,17 +1964,17 @@ function renderTrackingPage() {
 
   return `
     <div class="stack">
-      <section class="hero-card">
-        <div class="card-head">
+      <section class="hero-card" style="overflow:hidden;padding:0;">
+        <div class="page-section-head green">
+          <span style="font-size:28px;">📊</span>
           <div>
-            <h2 style="margin:0;">Tracking del estudiante</h2>
-            <p class="muted">Sesiones, tutorias, intentos y acciones registradas localmente.</p>
+            <div style="font-size:18px;">Mi progreso</div>
+            <div style="font-size:12px;opacity:0.85;">${metrics.sessions} sesiones completadas</div>
           </div>
-          <div class="row">
-            <button class="btn secondary" data-action="open-student-analysis" ${analysisDisabled ? "disabled" : ""}>
-              ${state.studentAnalysis.busy ? "Analizando..." : "Generar análisis de estudiante (BETA)"}
+          <div style="margin-left:auto;">
+            <button class="btn secondary" data-action="open-student-analysis" ${analysisDisabled ? "disabled" : ""} style="min-height:36px;padding:6px 14px;font-size:13px;">
+              ${state.studentAnalysis.busy ? "Analizando..." : "Ver análisis"}
             </button>
-            <span class="tag">${metrics.sessions} sesiones</span>
           </div>
         </div>
       </section>
@@ -1817,22 +2097,27 @@ function renderProfilePage() {
     return { ...lesson, state: done ? "done" : current ? "current" : "" };
   });
 
+  const profileAnimal = getProfileAnimal();
+  const animalData = ANIMAL_AVATARS[profileAnimal] || ANIMAL_AVATARS.bear;
+
   return `
     <div class="stack">
-      <section class="hero-card">
-        <div class="card-head">
-          <div class="profile-head">
-            <span class="tag">${escapeHtml(summary.focusArea)}</span>
-            <h2>${escapeHtml(summary.displayName)}</h2>
-            <p class="muted">${escapeHtml(summary.grade)} - Meta ${summary.dailyGoal} XP - ${escapeHtml(modeLabels[summary.responseMode])}</p>
+      <section class="hero-card" style="overflow:hidden;padding:0;">
+        <div class="page-section-head blue">
+          ${renderAnimalAvatar(profileAnimal, "sm")}
+          <div>
+            <div style="font-size:20px;">${escapeHtml(summary.displayName)}</div>
+            <div style="font-size:12px;opacity:0.85;font-weight:600;">${escapeHtml(summary.grade)} · ${escapeHtml(summary.focusArea)}</div>
           </div>
-          <div class="row">
-            <button class="btn secondary" data-action="edit-profile">Editar perfil</button>
-            <button class="btn primary" data-action="continue-suggestion" ${suggestion ? "" : "disabled"}>${suggestion ? "Continuar mision" : "Ruta completa"}</button>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button class="btn secondary" data-action="edit-profile" style="min-height:36px;padding:6px 14px;font-size:13px;">Editar</button>
+            <button class="btn primary" data-action="continue-suggestion" ${suggestion ? "" : "disabled"} style="min-height:36px;padding:6px 14px;font-size:13px;">${suggestion ? "▶ Continuar" : "✓ Completo"}</button>
           </div>
         </div>
-        <p class="muted">Meta diaria: ${summary.dailyGoalProgress}/${summary.dailyGoal} XP</p>
-        <div class="progress-bar"><span style="width:${(summary.dailyGoalProgress / summary.dailyGoal) * 100}%"></span></div>
+        <div style="padding:16px 20px;">
+          <p class="muted" style="margin:0 0 6px;font-size:13px;">Meta diaria: ${summary.dailyGoalProgress}/${summary.dailyGoal} XP</p>
+          <div class="progress-bar"><span style="width:${(summary.dailyGoalProgress / summary.dailyGoal) * 100}%"></span></div>
+        </div>
       </section>
       <section class="stats-row">
         <article class="stats-card"><p class="muted">Nivel</p><strong>${summary.level}</strong><span class="muted">Faltan ${summary.xpToNextLevel} XP</span></article>
@@ -1900,17 +2185,17 @@ function renderOnboarding() {
         <span class="${step === 2 ? "active" : ""}"></span>
       </div>
       <div>
-        <h2>Crea tu perfil de estudio</h2>
-        <p class="muted">Onboarding gamificado y persistencia local, ahora completamente en Electron.</p>
+        <h2>¡Bienvenido a Mi cuaderno!</h2>
+        <p class="muted">Cuéntame un poco sobre ti para personalizar tu cuaderno.</p>
       </div>
       ${step === 0 ? `
-        <input data-draft-field="name" value="${escapeHtml(draft.name || "")}" placeholder="Tu nombre o alias" />
-        <div class="choice-grid">
-          ${Object.entries(avatarMap).map(([key, src]) => `
-            <button class="choice-card ${draft.avatar === key ? "active" : ""}" data-action="choose-avatar" data-value="${key}">
-              <img src="${src}" alt="" />
-              <div class="card-title">${key}</div>
-              <p class="muted">Avatar para tu ruta.</p>
+        <input data-draft-field="name" value="${escapeHtml(draft.name || "")}" placeholder="Tu nombre o apodo" style="font-size:18px;padding:12px 16px;border-radius:14px;" />
+        <p style="font-weight:700;color:var(--muted);margin:0;">Elige tu animal:</p>
+        <div class="animal-choice-grid">
+          ${Object.entries(ANIMAL_AVATARS).map(([key, animal]) => `
+            <button class="animal-choice-btn ${draft.avatar === key ? "active" : ""}" data-action="choose-avatar" data-value="${key}" style="background:${animal.bg};" aria-label="${animal.name}" aria-pressed="${draft.avatar === key}">
+              ${animal.emoji}
+              <span class="animal-choice-name" style="color:#fff;">${animal.name}</span>
             </button>
           `).join("")}
         </div>
@@ -1976,23 +2261,23 @@ function renderSettingsModal() {
       <div class="modal-card">
         <div class="modal-header">
           <div>
-            <h3 style="margin:0;">Preferencias</h3>
-            <p class="muted">Configura Ollama, selecciona el modelo activo y el modo por defecto.</p>
+            <h3 style="margin:0;">Ajustes</h3>
+            <p class="muted">Elige el modelo de IA y las preferencias de tu cuaderno.</p>
           </div>
           <button class="ghost-btn" data-action="close-settings">Cerrar</button>
         </div>
         <div class="stack">
           <div class="card stack">
             <div>
-              <strong>Ollama local</strong>
-              <p class="muted">Usa el proceso principal de Electron para llamar a /api/tags y /api/chat.</p>
+              <strong>Modelo de IA</strong>
+              <p class="muted">El modelo de IA que usará tu cuaderno para ayudarte.</p>
             </div>
             <label>
-              <span class="muted">URL de Ollama</span>
+              <span class="muted">Dirección de la IA</span>
               <input data-settings-field="ollamaBaseUrl" value="${escapeHtml(draft.ollamaBaseUrl)}" />
             </label>
             <label>
-              <span class="muted">Modelo de Ollama</span>
+              <span class="muted">Modelo activo</span>
               <select data-settings-field="currentModel">
                 ${modelOptions(draft.currentModel)}
               </select>
@@ -2012,27 +2297,27 @@ function renderSettingsModal() {
           </label>
           <div class="card stack">
             <div>
-              <strong>Modo agente CLASS-A</strong>
-              <p class="muted">Activa el pipeline multiagente para tutoria adaptativa. Cada pregunta pasa por Enrutador → Modelo del Estudiante → Planificador → Decision Pedagogica → Tutor → Verificador.</p>
+              <strong>Modo avanzado</strong>
+              <p class="muted">Activa el modo avanzado para una ayuda más personalizada y adaptada a ti.</p>
             </div>
             <label style="flex-direction:row;align-items:center;gap:0.75rem;">
               <input type="checkbox" data-settings-checkbox="agentMode" ${draft.agentMode ? "checked" : ""} />
               <span>Activar modo agente</span>
             </label>
             <label>
-              <span class="muted">Modelo enrutador (rapido) — recomendado: qwen3.5:0.8b</span>
+              <span class="muted">Modelo rápido (recomendado: qwen3:0.6b)</span>
               <select data-settings-field="agentRouterModel">
                 ${modelOptions(draft.agentRouterModel, { placeholder: "Usar modelo principal" })}
               </select>
             </label>
             <label>
-              <span class="muted">Modelo tutor (razonamiento) — recomendado: gemma3:4b</span>
+              <span class="muted">Modelo tutor (recomendado: gemma3:4b)</span>
               <select data-settings-field="agentTutorModel">
                 ${modelOptions(draft.agentTutorModel, { placeholder: "Usar modelo principal" })}
               </select>
             </label>
             <label>
-              <span class="muted">Modelo de funcion (verificacion) — recomendado: functiongemma</span>
+              <span class="muted">Modelo de verificación (recomendado: functiongemma)</span>
               <select data-settings-field="agentFunctionModel">
                 ${modelOptions(draft.agentFunctionModel, { placeholder: "Usar modelo principal" })}
               </select>
@@ -2043,9 +2328,8 @@ function renderSettingsModal() {
           </div>
           <div class="card stack" style="border-color:var(--danger,#c00);">
             <div>
-              <strong>Datos de la aplicacion</strong>
-              <p class="muted">Ubicacion: ${escapeHtml(state.dataPath || "")}</p>
-              <p class="muted">ID de maquina: ${escapeHtml(state.machineId || "")}</p>
+              <strong>Tus datos guardados</strong>
+              <p class="muted">Carpeta: ${escapeHtml(state.dataPath || "")}</p>
             </div>
             <button class="btn danger" data-action="wipe-data">Borrar todos los datos</button>
           </div>
@@ -2612,9 +2896,9 @@ async function handleStudyQuestionAgentMode(question, options = {}) {
     state.exerciseOverlay = { open: false, index: 0 };
     openFlashcards({
       source: "practice-scope-gate",
-      title: "Pregunta fuera de alcance",
-      subtitle: "Este espacio solo responde matematicas infantiles.",
-      cards: [{ title: "No corresponde a este tutor", body: "Tu pregunta no corresponde a matematicas infantiles. Prueba con operaciones, fracciones, geometria basica o problemas escolares." }],
+      title: "¡Vaya, eso no es mates!",
+      subtitle: "Aquí solo puedo ayudarte con matemáticas.",
+      cards: [{ title: "Prueba con algo de mates", body: "Puedes preguntarme sobre operaciones, fracciones, geometría o problemas de clase." }],
       sessionId: sid
     });
     return;
@@ -2702,11 +2986,11 @@ async function handleStudyQuestion(question, options = {}) {
     state.exerciseOverlay = { open: false, index: 0 };
     openFlashcards({
       source: "practice-scope-gate",
-      title: "Pregunta fuera de alcance",
-      subtitle: "Este espacio solo responde matematicas infantiles.",
+      title: "¡Vaya, eso no es mates!",
+      subtitle: "Aquí solo puedo ayudarte con matemáticas.",
       cards: [{
-        title: "No corresponde a este tutor",
-        body: "Tu pregunta no corresponde a matematicas infantiles. Prueba con operaciones, fracciones, geometria basica o problemas escolares."
+        title: "Prueba con algo de mates",
+        body: "Puedes preguntarme sobre operaciones, fracciones, geometría o problemas de clase."
       }],
       sessionId
     });
@@ -2942,7 +3226,8 @@ async function runTextExplanation() {
 }
 
 async function runImageExplanation() {
-  if (!state.lessonUi.cropRect || !currentModelSupportsVision() || !inferenceReadiness().ready) return;
+  const visionModel = state.lessonUi.cropAction?.visionModel;
+  if (!state.lessonUi.cropRect || !visionModel || !inferenceReadiness().ready) return;
 
   const frame = document.getElementById("lesson-frame");
   if (!frame) return;
@@ -2978,7 +3263,7 @@ async function runImageExplanation() {
         content: buildVisualFlashcardUserPrompt(),
         images: [capture.base64]
       }
-    ], { requestId });
+    ], { requestId, model: visionModel });
     if (isRequestCancelled(requestId)) return;
     const payload = normalizeContextFlashcards(safeJsonParse(answer, {}), "recorte visual", "recorte visual");
     const cards = payload.cards.length
@@ -3189,9 +3474,17 @@ async function handleClick(event) {
     state.page = button.dataset.page;
   }
 
+  if (action === "book-prev") {
+    state.bookPage = Math.max(0, state.bookPage - 1);
+  }
+
+  if (action === "book-next") {
+    state.bookPage += 1;
+  }
+
   if (action === "select-unit") {
     state.selectedUnit = button.dataset.unit;
-    state.scrollTarget = "selected-unit-panel";
+    state.bookPage = 0;
   }
 
   if (action === "open-lesson") {
@@ -3460,7 +3753,7 @@ Sé conciso pero preciso. Usa bullet points. NO uses markdown complejo, solo bul
     }
   }
 
-  if (action === "toggle-crop-mode" && currentModelSupportsVision()) {
+  if (action === "toggle-crop-mode") {
     const nextMode = !state.lessonUi.cropMode;
     closeLessonMenus({ clearCrop: !nextMode });
     state.lessonUi.cropMode = nextMode;
@@ -3477,6 +3770,12 @@ Sé conciso pero preciso. Usa bullet points. NO uses markdown complejo, solo bul
 
   if (action === "explain-selection") {
     await runTextExplanation();
+    return;
+  }
+
+  if (action === "vision-model-change") {
+    state.lessonUi.cropAction = { ...state.lessonUi.cropAction, visionModel: el.value };
+    render();
     return;
   }
 
@@ -3841,8 +4140,8 @@ async function refreshOllamaModels(baseUrl) {
     state.ollama = {
       ok: true,
       message: state.availableModels.length
-        ? `${state.availableModels.length} modelos detectados en Ollama.`
-        : "Ollama responde, pero no hay modelos descargados."
+        ? `${state.availableModels.length} modelo${state.availableModels.length !== 1 ? "s" : ""} disponible${state.availableModels.length !== 1 ? "s" : ""}.`
+        : "La IA está conectada, pero no hay modelos descargados."
     };
     state.settings = normalizeSettings(state.settings, state.availableModels);
     if (state.settingsDraft) {
@@ -3930,10 +4229,15 @@ function wireLessonFrame() {
 
       state.lessonUi.cropMode = false;
       state.lessonUi.cropRect = rect;
+      const _vms = visionModels();
+      const _defaultVisionModel = currentModelSupportsVision()
+        ? state.settings.currentModel
+        : (_vms[0]?.name || "");
       state.lessonUi.cropAction = {
-        open: currentModelSupportsVision(),
-        x: clamp(rect.x + rect.width - 120, 10, Math.max(10, shell.clientWidth - 180)),
-        y: clamp(rect.y + rect.height + 12, 10, Math.max(10, shell.clientHeight - 80))
+        open: true,
+        x: clamp(rect.x + rect.width - 120, 10, Math.max(10, shell.clientWidth - 220)),
+        y: clamp(rect.y + rect.height + 12, 10, Math.max(10, shell.clientHeight - 80)),
+        visionModel: _defaultVisionModel
       };
       syncCropCursor();
       syncLessonUi();

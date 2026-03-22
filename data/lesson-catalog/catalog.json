@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "title": "TutorMate lesson catalog",
+  "title": "Cuaderno de Mates — catálogo de lecciones",
   "validation": {
     "uniqueUnitSlotKey": [
       "metadata.coursework",

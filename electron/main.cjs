@@ -97,9 +97,9 @@ async function confirmAndWipeData(parentWindow) {
     buttons: ["Conservar datos", "Eliminar datos"],
     defaultId: 0,
     cancelId: 0,
-    title: "Datos de TutorMate",
-    message: "¿Deseas eliminar los datos de usuario de TutorMate?",
-    detail: `Esto borrara perfil, progreso y configuracion almacenados en:\n${app.getPath("userData")}`
+    title: "Datos de Mi cuaderno",
+    message: "¿Quieres borrar todos los datos de Mi cuaderno?",
+    detail: `Esto borrará tu perfil, progreso y configuración guardados en:\n${app.getPath("userData")}`
   };
   const { response } = parentWindow
     ? await dialog.showMessageBox(parentWindow, options)
@@ -368,15 +368,15 @@ async function bootstrap() {
   let shouldPersistSettings = false;
 
   let availableModels = [];
-  let ollama = { ok: false, message: "Ollama no disponible." };
+  let ollama = { ok: false, message: "No se encontró la IA. Asegúrate de que Ollama esté en marcha." };
 
   try {
     availableModels = await listOllamaModels(settings.ollamaBaseUrl);
     ollama = {
       ok: true,
       message: availableModels.length
-        ? `${availableModels.length} modelos detectados en Ollama.`
-        : "Ollama responde, pero no hay modelos descargados."
+        ? `${availableModels.length} modelo${availableModels.length !== 1 ? "s" : ""} disponible${availableModels.length !== 1 ? "s" : ""}.`
+        : "La IA está conectada, pero no hay modelos descargados."
     };
     if (!settings.currentModel && settings.ollamaModel) {
       settings.currentModel = settings.ollamaModel;
