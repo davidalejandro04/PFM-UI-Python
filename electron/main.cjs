@@ -46,6 +46,8 @@ const DEFAULT_SETTINGS = {
 
 const activeChatControllers = new Map();
 let lessonCatalogModulePromise = null;
+let ragModulePromise = null;
+let ragRetriever = null;
 let machineId = null;
 
 function getLessonCatalogModule() {
@@ -54,6 +56,14 @@ function getLessonCatalogModule() {
     lessonCatalogModulePromise = import(moduleUrl);
   }
   return lessonCatalogModulePromise;
+}
+
+function getRAGModule() {
+  if (!ragModulePromise) {
+    const moduleUrl = pathToFileURL(path.join(ROOT_DIR, "src", "rag", "index.mjs")).href;
+    ragModulePromise = import(moduleUrl);
+  }
+  return ragModulePromise;
 }
 
 function userFile(name) {
@@ -141,13 +151,31 @@ async function listOllamaModels(baseUrl) {
   }));
 }
 
+async function preloadModel(baseUrl, modelName) {
+  try {
+    await fetch(`${baseUrl.replace(/\/$/, "")}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: modelName,
+        messages: [],
+        keep_alive: "30m",
+        options: { num_gpu: 999, use_mmap: true, flash_attn: true }
+      })
+    });
+  } catch {
+    // Model preload is best-effort; ignore errors.
+  }
+}
+
 async function chatWithOllama({
   baseUrl,
   model,
   messages,
   requestId = "",
   maxTokens = null,
-  temperature = null
+  temperature = null,
+  webContents = null
 }) {
   const safeRequestId = String(requestId || "").trim();
   const controller = new AbortController();
@@ -155,7 +183,21 @@ async function chatWithOllama({
     activeChatControllers.set(safeRequestId, controller);
   }
 
-  const ollamaOptions = {};
+  const ollamaOptions = {
+    num_ctx: 1024,          // minimal context window — fastest inference
+    num_predict: 1024,      // max output tokens
+    temperature: 0.4,       // lower temp = faster convergence, less sampling
+    num_thread: 0,          // 0 = auto-detect optimal thread count
+    num_gpu: 999,           // offload all layers to GPU
+    num_batch: 1024,        // large batch = faster prompt processing
+    mirostat: 0,            // disabled for speed
+    repeat_penalty: 1.0,    // no penalty check = faster
+    top_k: 10,              // very narrow sampling = faster token selection
+    top_p: 0.85,            // tighter nucleus
+    use_mmap: true,         // memory-mapped model loading
+    low_vram: false,        // don't restrict GPU usage
+    flash_attn: true,       // enable flash attention if supported
+  };
   if (Number.isFinite(Number(maxTokens)) && Number(maxTokens) > 0) {
     ollamaOptions.num_predict = Math.round(Number(maxTokens));
   }
@@ -169,9 +211,10 @@ async function chatWithOllama({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
-        stream: false,
+        stream: true,
         messages,
-        ...(Object.keys(ollamaOptions).length ? { options: ollamaOptions } : {})
+        keep_alive: "30m",
+        options: ollamaOptions
       }),
       signal: controller.signal
     });
@@ -187,8 +230,38 @@ async function chatWithOllama({
       throw new Error(`Ollama devolvio ${response.status}${detail ? `: ${detail}` : ""}`);
     }
 
-    const payload = await response.json();
-    return payload.message?.content || "";
+    // Stream NDJSON response
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let fullContent = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const data = JSON.parse(line);
+          const token = data.message?.content || "";
+          if (token) {
+            fullContent += token;
+            if (webContents && !webContents.isDestroyed()) {
+              webContents.send("ollama:chat-token", { requestId: safeRequestId, token });
+            }
+          }
+        } catch {
+          // skip malformed JSON lines
+        }
+      }
+    }
+
+    return fullContent;
   } catch (error) {
     if (error?.name === "AbortError") {
       const abortError = new Error("Solicitud cancelada.");
@@ -278,6 +351,18 @@ async function bootstrap() {
 
   const { loadLessonCatalogFromDirectory } = await getLessonCatalogModule();
   const lessons = await loadLessonCatalogFromDirectory(LESSON_CATALOG_DIR);
+
+  // Build RAG index from lesson catalog
+  try {
+    const { chunkLessonCatalog, RAGIndex, Retriever } = await getRAGModule();
+    const chunks = chunkLessonCatalog(lessons);
+    const index = new RAGIndex();
+    index.build(chunks);
+    ragRetriever = new Retriever(index);
+  } catch (err) {
+    console.warn("[rag] No se pudo construir el indice RAG:", err.message);
+  }
+
   const profile = await readJson(userFile("profile.json"), DEFAULT_PROFILE);
   const settings = await readJson(userFile("settings.json"), DEFAULT_SETTINGS);
   let shouldPersistSettings = false;
@@ -307,6 +392,11 @@ async function bootstrap() {
 
   if (shouldPersistSettings) {
     await writeJson(userFile("settings.json"), settings);
+  }
+
+  // Preload the active model into VRAM for faster first response
+  if (ollama.ok && settings.currentModel) {
+    preloadModel(settings.ollamaBaseUrl, settings.currentModel);
   }
 
   return {
@@ -348,8 +438,37 @@ app.whenReady().then(() => {
   });
   ipcMain.handle("settings:save", (_event, settings) => writeJson(userFile("settings.json"), settings));
   ipcMain.handle("ollama:list-models", (_event, baseUrl) => listOllamaModels(baseUrl));
-  ipcMain.handle("ollama:chat", (_event, payload) => chatWithOllama(payload));
+  ipcMain.handle("ollama:chat", async (event, payload) => {
+    if (payload.useRAG && ragRetriever) {
+      try {
+        const { augmentPromptWithContext } = await getRAGModule();
+        const query = (payload.messages || [])
+          .filter((m) => m.role === "user")
+          .map((m) => m.content)
+          .pop() || "";
+        if (query) {
+          const { context } = ragRetriever.retrieve(query);
+          if (context && Array.isArray(payload.messages) && payload.messages.length > 0) {
+            const firstMsg = payload.messages[0];
+            if (firstMsg.role === "system") {
+              payload.messages = [
+                { ...firstMsg, content: augmentPromptWithContext(firstMsg.content, context) },
+                ...payload.messages.slice(1)
+              ];
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[rag] Error augmenting chat:", err.message);
+      }
+    }
+    return chatWithOllama({ ...payload, webContents: event.sender });
+  });
   ipcMain.handle("ollama:cancel-chat", cancelOllamaChat);
+  ipcMain.handle("rag:search", async (_event, query) => {
+    if (!ragRetriever) return { context: "", sources: [] };
+    return ragRetriever.retrieve(String(query || ""));
+  });
   ipcMain.handle("ollama:pull-model", pullOllamaModel);
   ipcMain.handle("data:wipe", async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);

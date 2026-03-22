@@ -14,7 +14,13 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.on("ollama:pull-progress", handler);
     return () => ipcRenderer.removeListener("ollama:pull-progress", handler);
   },
+  onChatToken: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on("ollama:chat-token", handler);
+    return () => ipcRenderer.removeListener("ollama:chat-token", handler);
+  },
   wipeData: () => ipcRenderer.invoke("data:wipe"),
   getDataPath: () => ipcRenderer.invoke("data:path"),
-  captureRegion: (rect) => ipcRenderer.invoke("window:capture-region", rect)
+  captureRegion: (rect) => ipcRenderer.invoke("window:capture-region", rect),
+  ragSearch: (query) => ipcRenderer.invoke("rag:search", query)
 });
